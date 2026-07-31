@@ -1,0 +1,7 @@
+<!doctype html>
+<script>
+  // GitHub Pages SPA 라우팅 — 404를 index.html로 리디렉트
+  const base = location.pathname.split('/').slice(0, 2).join('/');
+  const path = location.pathname.slice(base.length) + location.search + location.hash;
+  location.replace(base + '/?p=' + encodeURIComponent(path));
+</script>
