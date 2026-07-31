@@ -36,8 +36,7 @@ jobs:
         env:
           # 실제 서버 주소로 교체 (예: https://mini-crimes-api.onrender.com)
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
-          # GitHub Pages 서브경로 (예: /mini-crimes)
-          VITE_BASE: ${{ secrets.VITE_BASE || '/' }}
+          VITE_BASE: ${{ secrets.VITE_BASE || '/mini-crimes/' }}
 
       # SPA 라우팅: 404.html = index.html
       - name: Copy index.html to 404.html
