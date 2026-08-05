@@ -8,9 +8,22 @@ export default function LobbyPage() {
   const navigate = useNavigate();
   const [room, setRoom] = useState(null);
   const [copied, setCopied] = useState(false);
-  const myId = socket.id;
+  const [myId, setMyId] = useState(socket.id ?? '');
 
-  useEffect(() => { if (!socket.connected) socket.connect(); }, []);
+  useEffect(() => {
+    if (!socket.connected) socket.connect();
+    const onConnect = () => setMyId(socket.id);
+    socket.on('connect', onConnect);
+    return () => socket.off('connect', onConnect);
+  }, []);
+
+  // URL 직접 접근 등으로 room:state 미수신 시 홈으로
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!room) navigate('/');
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [room, navigate]);
 
   const onRoomState = useCallback(r => setRoom(r), []);
   const onGameStarted = useCallback(() => navigate(`/game/${roomId}`), [navigate, roomId]);

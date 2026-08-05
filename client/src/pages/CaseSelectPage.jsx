@@ -311,6 +311,8 @@ const CASE_THEMES = {
   s1e09: { icon: '🔥', label: 'ARSON',      bg: '#1a0e04' },
   s1e10: { icon: '🏛️', label: 'POLITICS',   bg: '#0a0a1a' },
   sp01:  { icon: '🎭', label: 'MASQUERADE', bg: '#1a0a14' },
+  sp02:  { icon: '🚂', label: 'TRANSIT',    bg: '#0a0e1a' },
+  sp03:  { icon: '🏝️', label: 'ISLAND',     bg: '#041410' },
 };
 
 function CasePlaceholder({ caseId }) {

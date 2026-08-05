@@ -16,6 +16,7 @@ const users = require('./users');
 const history = require('./history');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'minicrimessecret2025';
+if (!process.env.JWT_SECRET) console.warn('[WARN] JWT_SECRET not set — using insecure default. Set env var in production.');
 
 function signToken(user) {
   return jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
@@ -34,11 +35,12 @@ function authMiddleware(req, res, next) {
 
 const app = express();
 const httpServer = createServer(app);
+const corsOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 const io = new Server(httpServer, {
-  cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173' },
+  cors: { origin: corsOrigin },
 });
 
-app.use(cors());
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
 // ── 인증 ──────────────────────────────────────────
@@ -109,7 +111,7 @@ app.get('/api/history', authMiddleware, (req, res) => {
 // 프로덕션: Vite 빌드 정적 서빙
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  app.get('*', (req, res) => {
+  app.get(/^(?!\/api)/, (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });
 }
