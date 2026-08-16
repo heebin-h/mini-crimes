@@ -48,7 +48,7 @@ module.exports = {
     suspect: [
       { id: 'a', text: '카밀로 루소 (부두목)', correct: true },
       { id: 'b', text: '만치니 (회계사)' },
-      { id: 'c', text: '소피아 마리나 (내연녀)' },
+      { id: 'c', text: '레나타 도나티 (내연녀)' },
       { id: 'd', text: '항구 직원 파울로' },
     ],
     weapon: [
@@ -68,7 +68,7 @@ module.exports = {
   s1e04: {
     suspect: [
       { id: 'a', text: '다리오 팔코 (후원자·미술 거래상)', correct: true },
-      { id: 'b', text: '박물관 경비원 체사레' },
+      { id: 'b', text: '박물관 경비원 지오르지오' },
       { id: 'c', text: '복원사 지아코모 펠리니' },
       { id: 'd', text: '전시 기획자 엘레나 마르티니' },
     ],
