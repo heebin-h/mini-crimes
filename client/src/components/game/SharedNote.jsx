@@ -7,6 +7,8 @@ export default function SharedNote({ value, onChange }) {
   // 멀티 플레이: 외부(서버 sync)에서 value 바뀌면 반영
   useEffect(() => { setLocal(value ?? ''); }, [value]);
 
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
   const handleChange = useCallback((e) => {
     const text = e.target.value;
     setLocal(text);

@@ -111,7 +111,8 @@ app.get('/api/history', authMiddleware, (req, res) => {
 // 프로덕션: Vite 빌드 정적 서빙
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  app.get(/^(?!\/api)/, (req, res) => {
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api')) return next();
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });
 }

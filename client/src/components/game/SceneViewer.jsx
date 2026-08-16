@@ -30,7 +30,7 @@ export default function SceneViewer({ imageUrl, caseId, caseTitle, remotePointer
   return (
     <div
       ref={containerRef}
-      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#040404', cursor: 'crosshair' }}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#040404', cursor: 'crosshair', touchAction: 'none' }}
       {...handlers}
       onMouseMove={handleMouseMove}
       onMouseLeave={onPointerLeave}
