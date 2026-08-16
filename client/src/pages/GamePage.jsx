@@ -28,7 +28,12 @@ export default function GamePage() {
   // 단서 공개 + 경고 카드 상태
   const [revealedClues, setRevealedClues] = useState([]);
   const [warningUsed, setWarningUsed] = useState(false);
-  const myId = socket.id;
+  const [myId, setMyId] = useState(socket.id ?? '');
+  useEffect(() => {
+    const onConnect = () => setMyId(socket.id);
+    socket.on('connect', onConnect);
+    return () => socket.off('connect', onConnect);
+  }, []);
 
   const allCasesRef = useRef([]);
 

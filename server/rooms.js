@@ -96,13 +96,13 @@ function submitAnswer(roomId, socketId, answers) {
 
 function revealRoom(roomId) {
   const room = rooms.get(roomId);
-  if (!room) return null;
+  if (!room || room.phase === 'revealed') return null;
   room.phase = 'revealed';
 
   const caseAnswer = getCaseAnswer(room.caseId);
   const scores = {};
   for (const [pid, answers] of Object.entries(room.playerAnswers)) {
-    scores[pid] = caseAnswer ? scoreAll(answers, caseAnswer, getChoices(room.caseId)) : null;
+    scores[pid] = caseAnswer ? scoreAll(answers ?? {}, caseAnswer, getChoices(room.caseId)) : null;
   }
 
   return {
