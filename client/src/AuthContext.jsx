@@ -8,7 +8,9 @@ export function AuthProvider({ children }) {
     try {
       const token = localStorage.getItem('mc_token');
       if (!token) return null;
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const payload = JSON.parse(new TextDecoder().decode(bytes));
       if (payload.exp * 1000 < Date.now()) { localStorage.removeItem('mc_token'); return null; }
       return { token, name: payload.name, email: payload.email };
     } catch { return null; }

@@ -46,7 +46,7 @@ app.use(express.json());
 // ── 인증 ──────────────────────────────────────────
 app.post('/api/auth/register', async (req, res) => {
   const { email, password, name } = req.body ?? {};
-  if (!email || !password || !name) return res.status(400).json({ error: 'MISSING_FIELDS' });
+  if (!email || !password || !name?.trim()) return res.status(400).json({ error: 'MISSING_FIELDS' });
   if (users.findByEmail(email)) return res.status(409).json({ error: 'EMAIL_EXISTS' });
   if (password.length < 6) return res.status(400).json({ error: 'PASSWORD_TOO_SHORT' });
   const passwordHash = await bcrypt.hash(password, 10);
