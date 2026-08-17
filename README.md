@@ -31,7 +31,8 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-개발 시 `vite.config.js`가 `/api`·`/socket.io` 요청을 `localhost:3001`로 프록시하므로 CORS 설정 없이 동작한다.
+개발 시 `vite.config.js`가 `/api`·`/socket.io` 요청을 `localhost:3001`로 프록시한다.
+단, `client/src/socket.js`는 `VITE_SERVER_URL`이 비어 있으면 `http://localhost:3001`에 직접 연결하므로, 로컬 개발에서는 서버가 반드시 실행 중이어야 한다.
 
 ---
 
@@ -44,6 +45,7 @@ npm run dev            # http://localhost:5173
 | `PORT` | `3001` | 서버 포트 |
 | `JWT_SECRET` | `minicrimessecret2025` | **프로덕션에서는 반드시 교체** |
 | `CLIENT_URL` | `http://localhost:5173` | CORS 허용 Origin (배포 시 클라이언트 도메인) |
+| `NODE_ENV` | — | `production` 설정 시 `client/dist` 정적 서빙 활성화 |
 
 ```bash
 # server/.env 예시
@@ -56,8 +58,8 @@ CLIENT_URL=https://<github-username>.github.io
 
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `VITE_SERVER_URL` | `''` (빈 문자열 = 프록시) | 서버 주소 (배포 시 `https://your-api.onrender.com`) |
-| `VITE_BASE` | `/` | 빌드 base path (GitHub Pages 서브경로 배포 시 `/mini-crimes/`) |
+| `VITE_SERVER_URL` | `''` | REST API base (`api.js`). 빈 문자열이면 Vite 프록시 경유. Socket.IO는 `http://localhost:3001` 직접 연결로 폴백. 배포 시 실제 서버 URL로 설정 |
+| `VITE_BASE` | `/` | 빌드 base path. GitHub Pages 서브경로 배포 시 `/mini-crimes/` |
 
 ```bash
 # client/.env.local 예시 (로컬 개발 — 설정 불필요)
@@ -101,23 +103,23 @@ NODE_ENV=production
 
 ### 메인 시리즈 (S1)
 
-| ID | 제목 | 설정 |
-|----|------|------|
-| S1E01 | The Last Supper | 만찬 중 독살 |
-| S1E02 | The Inheritance | 별장 독살 |
-| S1E03 | The Drowned King | 요트 익사 |
-| S1E04 | 침묵의 전시 | 박물관 야간 살인 |
-| S1E05 | 독이 든 성배 | e스포츠 팀 독살 |
-| S1E06 | 새벽의 배신 | 저택 계단 추락 |
-| S1E07 | 암호화된 유서 | 화실 납 중독 |
+| ID | 영문 제목 | 한글 제목 | 설정 |
+|----|-----------|-----------|------|
+| S1E01 | Homicide in Cold Blood | 냉혹한 살인 | 밀라노 외곽 빌라, 서재 독살 |
+| S1E02 | Family Matters | 가족의 문제 | 토스카나 농가, 저녁 식사 중 독살 |
+| S1E03 | The Drowned King | 물에 빠진 왕 | 지중해 항구, 요트 익사 |
+| S1E04 | Like Cat and Mouse | 고양이와 쥐처럼 | 로마 박물관, 수장고 둔기 살인 |
+| S1E05 | Game Over | 게임 오버 | 밀라노 e스포츠 센터, 화장실 독살 |
+| S1E06 | A Wrong Choice | 잘못된 선택 | 피렌체 외곽 저택, 계단 추락 |
+| S1E07 | The Last Masterpiece | 마지막 걸작 | 베네치아 아틀리에, 납 중독 |
 
 ### 스페셜 시리즈 (SP)
 
-| ID | 제목 | 설정 |
-|----|------|------|
-| SP01 | 트릭 오어 트릿 | 핼러윈 파티 독살 |
-| SP02 | 새해 전야의 살인 | 신년 파티 추락 |
-| SP03 | 결혼식의 참사 | 결혼식 알레르기 살인 |
+| ID | 영문 제목 | 한글 제목 | 설정 |
+|----|-----------|-----------|------|
+| SP01 | Trick or Treat | 트릭 오어 트릿 | 할로윈 파티, 수면제 혼합 후 방치 |
+| SP02 | Murder on New Year's Eve | 새해 전야의 살인 | 밀라노 옥상 파티, 난간 조작 추락 |
+| SP03 | The Wedding Crash | 결혼식의 참사 | 시칠리아 결혼식, 알레르기 쇼크 |
 
 각 케이스: 단서 카드 10장 + 경고 카드 1장 + 3문항(범인/수단/동기) 4지선다.
 
@@ -128,18 +130,29 @@ NODE_ENV=production
 ```
 server/
 ├── data/
-│   ├── users.json     # 회원 목록 (gitignore)
-│   └── history.json   # 플레이 기록 (gitignore)
-├── db.js              # 케이스 데이터 + 정답 (10개 케이스)
-├── choices.js         # 선택지 목록 (correct:true = 서버 전용)
-├── scoring.js         # 채점 로직
-├── rooms.js           # 멀티플레이 방 상태 관리 (in-memory)
-├── users.js           # 회원 CRUD (file-based)
-├── history.js         # 기록 CRUD (file-based)
-└── index.js           # Express 서버 + Socket.IO 이벤트
+│   ├── users.json       # 회원 목록 (gitignore, 서버 최초 실행 시 자동 생성)
+│   └── history.json     # 플레이 기록 (gitignore, 첫 플레이 후 자동 생성)
+├── db.js                # 케이스 데이터 + 정답 (10개 케이스)
+├── choices.js           # 선택지 목록 (correct:true = 서버 전용)
+├── scoring.js           # 채점 로직
+├── rooms.js             # 멀티플레이 방 상태 관리 (in-memory)
+├── users.js             # 회원 CRUD (file-based)
+├── history.js           # 기록 CRUD (file-based)
+├── index.js             # Express 서버 + Socket.IO 이벤트
+└── test-multi-flow.mjs  # 멀티플레이 플로우 통합 테스트
+
+client/src/
+├── pages/               # 라우트 단위 페이지 컴포넌트
+├── components/          # 공용 + 게임 전용 컴포넌트
+├── hooks/               # useSocket, useZoom 등 커스텀 훅
+├── data/                # 클라이언트 전용 정적 데이터
+├── App.jsx              # BrowserRouter + 라우트 정의
+├── AuthContext.jsx      # JWT 인증 상태 전역 관리
+├── socket.js            # Socket.IO 인스턴스 (autoConnect: false)
+└── api.js               # REST API base URL 헬퍼
 ```
 
-**채점 방식**: `choices.js`의 `correct:true` 항목 `text` ↔ `db.js` `answer.text` 완전 일치 비교. 두 값이 어긋나면 항상 오답 처리된다.
+**채점 방식**: 플레이어가 제출한 선택지 text를 `choices.js`의 `correct:true` 항목 text와 비교한다. `choices.js`에 선택지가 없는 경우에만 `db.js` `answer.keywords` 부분 일치 폴백을 사용한다. `choices.js` text와 `db.js` answer.text는 항상 동일해야 한다 (어긋나면 채점 불가).
 
 **정답 포지션 분포** (총 30문항):
 - a: 8개 / b: 7개 / c: 7개 / d: 8개
@@ -158,6 +171,7 @@ server/
 | C→S | `warning:use` | 경고 카드 사용 |
 | C→S | `note:update` | 공유 노트 변경 |
 | C→S | `pointer:move` | 마우스 포인터 위치 브로드캐스트 |
+| C→S | `pointer:leave` | 마우스 포인터 이탈 |
 | C→S | `answer:submit` | 최종 답안 제출 |
 | C→S | `game:reveal` | 정답 공개 강제 (방장만) |
 | S→C | `room:state` | 방 상태 전체 동기화 |
@@ -167,7 +181,7 @@ server/
 | S→C | `warning:used` | 경고 카드 사용 확정 |
 | S→C | `note:synced` | 공유 노트 동기화 |
 | S→C | `pointer:moved` | 타인 포인터 위치 |
-| S→C | `pointer:cleared` | 타인 포인터 제거 |
+| S→C | `pointer:cleared` | 타인 포인터 제거 (`pointer:leave` 수신 시 발생) |
 | S→C | `answer:submitted` | 답안 제출 알림 |
 | S→C | `game:revealed` | 정답 + 채점 결과 |
 | S→C | `player:left` | 플레이어 이탈 |
@@ -206,7 +220,8 @@ server/
 
 ## 개발 메모
 
-- **재연결**: Socket.IO 재연결 시 새 socket.id가 발급됨. `rooms.js`의 `joinRoom`이 이름 기반으로 disconnected 플레이어를 찾아 socket.id를 갱신하고 방장 권한도 복원한다.
+- **재연결**: Socket.IO 재연결 시 새 socket.id가 발급됨. `rooms.js`의 `joinRoom`이 이름 기반으로 disconnected 플레이어를 찾아 socket.id를 갱신하고 방장 권한도 복원한다. 게임 중 재연결도 허용(신규 입장만 로비 제한).
 - **정답 보안**: `choices.js`의 `correct:true`는 클라이언트에 전달하지 않는다 (`casesForClient()`에서 제거). 정답은 서버 채점 시에만 사용.
 - **SPA fallback**: Express 프로덕션 모드에서 `app.use()` + `req.path.startsWith('/api')` 체크로 처리 (Express 5는 regex route 미지원).
 - **JWT decode**: `atob()`는 base64url 미지원. `AuthContext.jsx`에서 `-`→`+`, `_`→`/` 치환 후 TextDecoder로 디코딩.
+- **choices.js text 동기화**: `choices.js`의 `correct:true` 항목 text는 `db.js` `answer.text`와 반드시 동일해야 한다. 어긋나면 항상 오답 처리.
