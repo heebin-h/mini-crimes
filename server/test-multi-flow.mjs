@@ -107,8 +107,11 @@ async function run() {
   const joinAck = await emitAck(sockB, 'room:join', { roomId, playerName: '형사B' });
   joinAck.ok ? ok('B 방 참가 성공') : ng('B 방 참가 실패', joinAck.error);
 
-  // B 참가 후 A에게 room:state 업데이트
-  const stateAfterJoin = await waitEvent(sockA, 'room:state');
+  // B 참가 후 A·B 모두 room:state 수신 — 둘 다 소비해야 다음 room:state(playing)와 혼동 없음
+  const [stateAfterJoin] = await Promise.all([
+    waitEvent(sockA, 'room:state'),
+    waitEvent(sockB, 'room:state'),
+  ]);
   stateAfterJoin.players.length === 2 ? ok('A — 참가 후 플레이어 2명') : ng('A — 참가 후 플레이어 수', stateAfterJoin.players.length);
 
   // A: 게임 시작 — game:started 와 room:state 가 거의 동시 도착하므로 미리 등록

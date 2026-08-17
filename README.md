@@ -34,6 +34,22 @@ npm run dev            # http://localhost:5173
 개발 시 `vite.config.js`가 `/api`·`/socket.io` 요청을 `localhost:3001`로 프록시한다.
 단, `client/src/socket.js`는 `VITE_SERVER_URL`이 비어 있으면 `http://localhost:3001`에 직접 연결하므로, 로컬 개발에서는 서버가 반드시 실행 중이어야 한다.
 
+### 테스트 계정
+
+`server/data/users.json`은 gitignore 대상이므로 저장소에 포함되지 않는다.
+로컬에서 테스트하려면 앱에서 직접 회원가입(`/register`)하거나, 아래 계정을 `users.json`에 수동으로 추가한다 (비밀번호 `pass1234`).
+
+| 이름 | 이메일 |
+|------|--------|
+| 테스트수사관 | test@gmail.com |
+| 김민준 | minjun@test.com |
+| 이서연 | seoyeon@test.com |
+| 박지호 | jiho@test.com |
+| 최유나 | yuna@test.com |
+| 정하은 | haeun@test.com |
+
+`server/data/users.json`이 없으면 서버 최초 실행 시 빈 배열로 자동 생성된다.
+
 ---
 
 ## 환경변수
@@ -215,6 +231,68 @@ client/src/
 | SP03 | 루치아노 배제가 케이크 구역만 커버, 에피펜 은닉 행위는 불배제 |
 
 위 이슈는 새 단서 카드 추가 또는 기존 단서 내용 보강으로 해결 가능. `db.js`의 `clueCards` 배열에 단서를 추가하거나 기존 단서 텍스트를 수정한다.
+
+---
+
+## 케이스·단서 추가 방법
+
+### 기존 단서 수정
+
+`server/db.js`의 해당 케이스 `clueCards` 배열에서 `description` 텍스트를 수정한다.
+`label`은 카드 제목, `description`은 카드 본문이다.
+
+### 새 단서 카드 추가
+
+단서 인덱스는 `1`~`10`이 기본. 11번째가 필요하면 인덱스 번호만 늘리면 된다.
+이미지 파일(`clue_11.jpg` 등)은 `client/public/cases/{caseId}/`에 추가한다.
+
+```js
+// db.js clueCards 배열 예시
+clue('s1e01', 11, '카드 제목', '카드 설명 텍스트'),
+```
+
+`clue(caseId, index, label, description)` 함수가 id·image 경로를 자동 생성한다.
+
+### 새 케이스 추가
+
+1. **`server/db.js`** — `SEASON_1` 또는 `SPECIALS` 배열에 케이스 객체 추가:
+   ```js
+   {
+     id: 's1e08',            // 고유 ID (소문자)
+     season: 1, episode: 8,
+     title: 'English Title', titleKo: '한글 제목',
+     synopsis: '...',
+     sceneImage: '/cases/s1e08/scene.jpg',
+     thumbnail: '/cases/s1e08/thumb.jpg',
+     clueCards: [
+       clue('s1e08', 1, '단서 제목', '단서 설명'),
+       // ... 최대 10장
+     ],
+     warningCard: { id: 'warning', label: '경고 카드', hint: '힌트 텍스트', image: '/cases/s1e08/warning.jpg' },
+     answer: {
+       suspect: { text: '정답 용의자 텍스트', keywords: ['키워드'] },
+       weapon:  { text: '정답 수단 텍스트',   keywords: ['키워드'] },
+       motive:  { text: '정답 동기 텍스트',   keywords: ['키워드'] },
+     },
+   }
+   ```
+
+2. **`server/choices.js`** — 동일 ID 키로 선택지 추가 (`correct: true`는 정답 하나만):
+   ```js
+   s1e08: {
+     suspect: [
+       { id: 'a', text: '...' },
+       { id: 'b', text: '...', correct: true },
+       { id: 'c', text: '...' },
+       { id: 'd', text: '...' },
+     ],
+     weapon:  [ /* 동일 구조 */ ],
+     motive:  [ /* 동일 구조 */ ],
+   },
+   ```
+   `correct: true` 항목의 `text`는 `db.js` `answer.{question}.text`와 **정확히 일치**해야 한다.
+
+3. **이미지** — `client/public/cases/s1e08/`에 `scene.jpg`, `thumb.jpg`, `warning.jpg`, `clue_01.jpg`~`clue_10.jpg` 추가.
 
 ---
 
