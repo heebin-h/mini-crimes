@@ -232,5 +232,11 @@ function doReveal(roomId) {
   } catch {}
 }
 
+// 전역 에러 핸들러 (Express 5: async 라우트 에러 자동 전달)
+app.use((err, req, res, next) => {
+  console.error('[ERROR]', err.message ?? err);
+  res.status(err.status ?? 500).json({ error: err.message ?? 'INTERNAL_SERVER_ERROR' });
+});
+
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => console.log(`server listening on :${PORT}`));

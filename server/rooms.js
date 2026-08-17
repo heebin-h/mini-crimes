@@ -28,15 +28,29 @@ function createRoom(caseId, hostSocketId, hostName) {
 function joinRoom(roomId, socketId, playerName) {
   const room = rooms.get(roomId);
   if (!room) return { ok: false, error: 'ROOM_NOT_FOUND' };
+
+  // 이미 등록된 socket.id (정상 join 또는 중복 호출)
+  const existing = room.players.find(p => p.id === socketId);
+  if (existing) {
+    existing.connected = true;
+    return { ok: true };
+  }
+
+  // 재연결: disconnected 플레이어 중 이름 일치 → socket.id 갱신
+  const disconnected = room.players.find(p => !p.connected && p.name === playerName);
+  if (disconnected) {
+    const wasHost = room.hostId === disconnected.id;
+    disconnected.id = socketId;
+    disconnected.connected = true;
+    if (wasHost) room.hostId = socketId;
+    return { ok: true };
+  }
+
+  // 신규 입장: 로비이고 자리가 있어야 함
   if (room.phase !== 'lobby') return { ok: false, error: 'GAME_ALREADY_STARTED' };
   if (room.players.length >= 8) return { ok: false, error: 'ROOM_FULL' };
 
-  const existing = room.players.find(p => p.id === socketId);
-  if (!existing) {
-    room.players.push({ id: socketId, name: playerName, connected: true });
-  } else {
-    existing.connected = true;
-  }
+  room.players.push({ id: socketId, name: playerName, connected: true });
   return { ok: true };
 }
 
