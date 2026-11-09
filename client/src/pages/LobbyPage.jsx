@@ -25,12 +25,20 @@ export default function LobbyPage() {
     return () => clearTimeout(t);
   }, [room, navigate]);
 
-  const onRoomState = useCallback(r => setRoom(r), []);
+  // 로비 진입(navigate) 중 방장이 개시하면 game:started가 유실될 수 있어 phase로도 진입한다.
+  // URL roomId와 다른 방 상태(이전 방 push 등)는 무시. 같은 라우트에서 roomId만 바뀌면 컴포넌트가 재사용되므로 초기화.
+  useEffect(() => { setRoom(null); }, [roomId]);
+  const onRoomState = useCallback(r => {
+    if (r?.roomId !== roomId) return;
+    setRoom(r);
+    if (r.phase === 'playing') navigate(`/game/${roomId}`, { replace: true });
+  }, [navigate, roomId]);
   const onGameStarted = useCallback(() => navigate(`/game/${roomId}`), [navigate, roomId]);
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('game:started', onGameStarted);
-  useRoomSync(true, onRoomState);
+  // 실패 시 별도 처리 없음 — 아래 8초 fallback이 홈으로 보낸다.
+  useRoomSync(roomId, true, onRoomState);
 
   function copyCode() {
     navigator.clipboard.writeText(roomId);
