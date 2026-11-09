@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { api } from '../api';
-import { useSocketEvent } from '../hooks/useSocket';
+import { useSocketEvent, useRoomSync } from '../hooks/useSocket';
 import SceneViewer from '../components/game/SceneViewer';
 import CluePanel from '../components/game/CluePanel';
 import SharedNote from '../components/game/SharedNote';
@@ -122,6 +122,7 @@ export default function GamePage() {
   useSocketEvent('pointer:cleared', onPointerCleared);
   useSocketEvent('answer:submitted', onAnswerSubmitted);
   useSocketEvent('game:revealed', onGameRevealed);
+  useRoomSync(!isSolo, onRoomState);
 
   // activeCaseData ref (onGameRevealed 클로저에서 최신값 참조)
   // 멀티: caseData가 배열이면 room.caseId로 resolve — 두 상태 중 어느 쪽이 먼저 와도 대응

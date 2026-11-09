@@ -144,6 +144,18 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('room:state', roomToClient(getRoom(roomId)));
   });
 
+  // 현재 방 상태 pull — room:state push는 페이지 전환(navigate) 중 구독 전에 도착해 유실될 수 있어,
+  // Lobby/Game 페이지가 마운트 시 직접 요청한다.
+  socket.on('room:get', (ack) => {
+    if (typeof ack !== 'function') return;
+    const room = getRoom(currentRoomId);
+    if (!room) {
+      console.warn(`[room:get] no room for socket=${socket.id} roomId=${currentRoomId}`);
+      return ack({ ok: false, error: 'ROOM_NOT_FOUND' });
+    }
+    ack({ ok: true, room: roomToClient(room) });
+  });
+
   socket.on('game:start', () => {
     const room = getRoom(currentRoomId);
     if (!room || room.hostId !== socket.id) return;

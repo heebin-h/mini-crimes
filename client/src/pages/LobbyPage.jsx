@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
-import { useSocketEvent } from '../hooks/useSocket';
+import { useSocketEvent, useRoomSync } from '../hooks/useSocket';
 
 export default function LobbyPage() {
   const { roomId } = useParams();
@@ -30,6 +30,7 @@ export default function LobbyPage() {
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('game:started', onGameStarted);
+  useRoomSync(true, onRoomState);
 
   function copyCode() {
     navigator.clipboard.writeText(roomId);
