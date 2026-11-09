@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { assetUrl } from '../../assetUrl';
 
 // revealedClues: string[]  — 공개된 clueId 목록
 // focusedBy: { clueId -> playerName }
@@ -136,7 +137,7 @@ export default function CluePanel({ clueCards = [], warningCard, revealedClues =
             <div style={{ overflow: 'auto', background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 160 }}>
               {modal.card.image ? (
                 <img
-                  src={modal.card.image}
+                  src={assetUrl(modal.card.image)}
                   alt={modal.card.label}
                   style={{ maxWidth: '100%', maxHeight: '55vh', objectFit: 'contain' }}
                 />
@@ -194,7 +195,7 @@ function ClueCardTile({ card, index, isRevealed, viewer, onClick }) {
       {isRevealed ? (
         <>
           {card.image ? (
-            <img src={card.image} alt={card.label} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: .75 }} />
+            <img src={assetUrl(card.image)} alt={card.label} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: .75 }} />
           ) : (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontSize: 18 }}>📄</div>
           )}

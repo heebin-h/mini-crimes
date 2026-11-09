@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import CaseBriefModal from '../components/CaseBriefModal';
 import { api } from '../api';
+import { assetUrl } from '../assetUrl';
 import { useAuth } from '../AuthContext';
 
 const SEASONS = [1, 2, 'Special'];
@@ -265,7 +266,7 @@ function CaseCard({ caseData, index, onSolo, onMulti }) {
       {/* 씬 이미지 자리 */}
       <div style={{ height: 110, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         {caseData.thumbnail ? (
-          <img src={caseData.thumbnail} alt={caseData.title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: .6 }} />
+          <img src={assetUrl(caseData.thumbnail)} alt={caseData.title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: .6 }} />
         ) : (
           <CasePlaceholder caseId={caseData.id} title={caseData.title} />
         )}
