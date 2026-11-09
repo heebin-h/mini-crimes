@@ -244,7 +244,7 @@ client/src/
 ### 새 단서 카드 추가
 
 단서 인덱스는 `1`~`10`이 기본. 11번째가 필요하면 인덱스 번호만 늘리면 된다.
-이미지 파일(`clue_11.jpg` 등)은 `client/public/cases/{caseId}/`에 추가한다.
+이미지 파일(`clue_11.webp` 등)은 `client/public/cases/{caseId}/`에 추가한다.
 
 ```js
 // db.js clueCards 배열 예시
