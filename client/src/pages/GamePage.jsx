@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { api } from '../api';
-import { useSocketEvent } from '../hooks/useSocket';
+import { useSocketEvent, useRoomSync } from '../hooks/useSocket';
 import SceneViewer from '../components/game/SceneViewer';
 import CluePanel from '../components/game/CluePanel';
 import SharedNote from '../components/game/SharedNote';
@@ -52,10 +52,23 @@ export default function GamePage() {
 
   // 멀티: room 상태로 케이스 결정 + revealedClues/warningUsed 동기화
   const onRoomState = useCallback((r) => {
+    if (r?.roomId !== roomId) return; // 이전 방 push 무시
     setRoom(r);
     setRevealedClues(r.revealedClues ?? []);
     setWarningUsed(r.warningUsed ?? false);
-  }, []);
+  }, [roomId]);
+
+  // 진입 시 pull 결과에만 sharedNote 반영. push(room:state)마다 덮으면 입력 중 글자가 이전 값으로 되돌아갈 수 있다.
+  const onRoomSynced = useCallback((r) => {
+    onRoomState(r);
+    if (typeof r.sharedNote === 'string') {
+      noteRef.current = r.sharedNote;
+      setNote(r.sharedNote);
+    }
+  }, [onRoomState]);
+
+  // 방 상태를 못 받으면 빈 게임 화면에 멈추지 않도록 홈으로 (새로고침 복귀는 P0-2)
+  const onRoomSyncError = useCallback(() => navigate('/', { replace: true }), [navigate]);
 
   const onNoteSynced = useCallback(({ text }) => {
     noteRef.current = text;
@@ -122,6 +135,7 @@ export default function GamePage() {
   useSocketEvent('pointer:cleared', onPointerCleared);
   useSocketEvent('answer:submitted', onAnswerSubmitted);
   useSocketEvent('game:revealed', onGameRevealed);
+  useRoomSync(roomId, !isSolo, onRoomSynced, onRoomSyncError);
 
   // activeCaseData ref (onGameRevealed 클로저에서 최신값 참조)
   // 멀티: caseData가 배열이면 room.caseId로 resolve — 두 상태 중 어느 쪽이 먼저 와도 대응
