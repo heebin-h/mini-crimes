@@ -30,3 +30,9 @@
 | 솔로 모드 회귀 | PASS | PASS | PASS |
 
 lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
+
+## 2026-11-10 — 이미지 WebP 전환 + 서브경로 배포 이미지 404 (PR #2, main 머지 `c09f1e2`)
+
+- 이미지 130장 JPEG → WebP(q75): 5.8MB → 4.2MB(−28%), 해상도 유지. JPEG q70 재인코딩은 원본보다 커져(7.5MB) 기각, WebP q60(−40%)은 현장 확대 시 열화 우려로 기각.
+- `/cases/...` 절대경로가 `VITE_BASE=/mini-crimes/` 빌드에서 도메인 루트로 요청돼 404 → `client/src/assetUrl.js`로 `BASE_URL` 적용.
+- 검증: `VITE_BASE=/mini-crimes/` build + preview에서 썸네일 7/7·현장 1280px·단서 640px 로드, 404 0건. GitHub Pages 실배포 미확인.

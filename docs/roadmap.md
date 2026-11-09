@@ -23,16 +23,16 @@
 ## P1 — 추리 성립·배포
 
 - [ ] **P1-1 SP01~SP03 단서 보강 6건** (README `알려진 미결 이슈`) — 기존 단서 텍스트 보강 권장(이미지 1:1 구조)
-- [x] **P1-2 서브경로 배포 이미지 404** — `assetUrl()` + BASE_URL (`chore/webp-images-base-url`, 미머지)
+- [x] **P1-2 서브경로 배포 이미지 404** — `assetUrl()` + BASE_URL (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
   - [ ] GitHub Pages 실배포 확인
-- [x] 이미지 WebP 전환 5.8MB → 4.2MB (`chore/webp-images-base-url`, 미머지)
+- [x] 이미지 WebP 전환 5.8MB → 4.2MB (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
 
 ## P2 — 문서 정합성 (게임 영향 없음)
 
 - [ ] SCENARIO_PLAN·시나리오 §9 V3 "자유 입력+키워드" 전제 → 4지선다 text 비교로 수정
 - [ ] sp01 약물명 오타(문서 "미도라졸람") 수정, `db.js:482` "강효" 오타 확인
 - [ ] sp02 동기·s1e04 사건 유형 서술 통일, "119"·원/유로·이름 중복 정리
-- [x] 문서 이미지 파일명 .jpg → .webp (`chore/webp-images-base-url`, 미머지)
+- [x] 문서 이미지 파일명 .jpg → .webp (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
 
 ## P3 — 정리
 
