@@ -3,7 +3,7 @@
  * answer  → 서버 전용. /api/cases 응답에서 자동 제거.
  * choices → correct 플래그는 서버 전용. 클라이언트엔 correct 제거 후 전달.
  * warningCard.hint → 경고 카드 사용 시 클라이언트 표시용 (비밀 아님, 효율성 감점만).
- * 이미지 경로: client/public/cases/{id}/scene.jpg, clue_01~10.jpg, warning.jpg, thumb.jpg
+ * 이미지 경로: client/public/cases/{id}/scene.webp, clue_01~10.webp, warning.webp, thumb.webp
  */
 
 const CHOICES = require('./choices');
@@ -19,7 +19,7 @@ function clue(caseId, index, label, description) {
     id: `c${String(index).padStart(2, '0')}`,
     label,
     description,
-    image: `/cases/${caseId}/clue_${String(index).padStart(2, '0')}.jpg`,
+    image: `/cases/${caseId}/clue_${String(index).padStart(2, '0')}.webp`,
   };
 }
 
@@ -36,7 +36,7 @@ const SEASON_1 = [
       '서재 소파에서 숨진 채 발견됐다. 사망 추정 시각은 전날 밤 11시~새벽 1시. ' +
       '현장에는 쓰러진 크리스탈 와인잔과 반쯤 열린 금고, 그리고 희미한 아몬드 냄새가 남아 있었다. ' +
       '경찰은 독살 가능성을 열어두고 수사 중이다.',
-    sceneImage: '/cases/s1e01/scene.jpg', thumbnail: '/cases/s1e01/thumb.jpg',
+    sceneImage: '/cases/s1e01/scene.webp', thumbnail: '/cases/s1e01/thumb.webp',
     clueCards: [
       clue('s1e01', 1, '검시 보고서',
         '사인: 시안화칼륨(청산가리) 중독. 경구 투입 추정. 사망 추정 시각 밤 11:20~새벽 00:40. ' +
@@ -78,7 +78,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e01/warning.jpg',
+      image: '/cases/s1e01/warning.webp',
       hint: '독이 와인잔에 직접 투입됐다. 그리고 누군가 그날 밤 빌라 CCTV에 찍혔다. 두 단서를 연결하라.',
     },
     questions: STD_QUESTIONS,
@@ -98,7 +98,7 @@ const SEASON_1 = [
       '가장 엘리오 페라리(71세)가 저녁 식사 도중 쓰러져 병원에서 사망했다. ' +
       '의사는 심장마비 소견을 냈지만, 막내딸 소피아는 아버지가 독살당했다고 주장한다. ' +
       '식탁에 둘러앉았던 가족은 모두 6명. 누군가 기회를 노리고 있었다.',
-    sceneImage: '/cases/s1e02/scene.jpg', thumbnail: '/cases/s1e02/thumb.jpg',
+    sceneImage: '/cases/s1e02/scene.webp', thumbnail: '/cases/s1e02/thumb.webp',
     clueCards: [
       clue('s1e02', 1, '부검 보고서 (초안)',
         '사인: 뇌출혈. 혈중 와파린(항응고제) 농도가 치료 기준의 8배 초과. ' +
@@ -140,7 +140,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e02/warning.jpg',
+      image: '/cases/s1e02/warning.webp',
       hint: '와인 병에서 독이 검출됐다. 그날 밤 와인을 서빙한 사람이 누구인지 조리 담당자 기록을 확인하라.',
     },
     questions: STD_QUESTIONS,
@@ -159,7 +159,7 @@ const SEASON_1 = [
       '지중해 항구 도시. 지역 갱단의 보스 살바토레 "왕" 콘티(55세)가 ' +
       '자신의 요트에서 익사체로 발견됐다. 갑판에는 술병과 흐트러진 카드패. ' +
       '그날 밤 요트엔 최소 세 명이 함께 있었다. 모두 입을 굳게 다물고 있다.',
-    sceneImage: '/cases/s1e03/scene.jpg', thumbnail: '/cases/s1e03/thumb.jpg',
+    sceneImage: '/cases/s1e03/scene.webp', thumbnail: '/cases/s1e03/thumb.webp',
     clueCards: [
       clue('s1e03', 1, '검시 결과 (폐에서 해수 검출)',
         '사인: 익사. 폐에서 해수 검출. 혈중 알코올 농도 0.19% + 졸피뎀(수면제) 검출. ' +
@@ -198,7 +198,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e03/warning.jpg',
+      image: '/cases/s1e03/warning.webp',
       hint: '술과 수면제가 함께 검출됐다. 누군가 음료에 무언가를 넣었다. 그리고 난간 근처에서 라텍스 장갑 흔적이 발견됐다.',
     },
     questions: STD_QUESTIONS,
@@ -218,7 +218,7 @@ const SEASON_1 = [
       '수장고에서 머리를 얻어맞고 쓰러진 채 발견됐다. ' +
       '다행히 목숨은 건졌지만 아직 의식이 없다. ' +
       '같은 시각, 15세기 브론즈 조각상 하나가 사라졌다.',
-    sceneImage: '/cases/s1e04/scene.jpg', thumbnail: '/cases/s1e04/thumb.jpg',
+    sceneImage: '/cases/s1e04/scene.webp', thumbnail: '/cases/s1e04/thumb.webp',
     clueCards: [
       clue('s1e04', 1, '수장고 출입 로그 (카드키)',
         '당일 밤 카드키 입장 기록: 안나 루소 21:04 입장. ' +
@@ -259,7 +259,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e04/warning.jpg',
+      image: '/cases/s1e04/warning.webp',
       hint: '조각상이 사라진 것은 우연이 아니다. 그 조각상에 관심을 가진 사람이 6개월 전에 이미 있었다. 자금 출처 의혹도 함께 확인하라.',
     },
     questions: [
@@ -283,7 +283,7 @@ const SEASON_1 = [
       '프로게이머 다니엘레 파비(24세)가 화장실에서 숨진 채 발견됐다. ' +
       '사인은 약물 과다복용으로 추정. 하지만 다니엘레는 금주·금약을 원칙으로 했다. ' +
       '그날 밤 대회장엔 100명이 넘는 사람이 있었다.',
-    sceneImage: '/cases/s1e05/scene.jpg', thumbnail: '/cases/s1e05/thumb.jpg',
+    sceneImage: '/cases/s1e05/scene.webp', thumbnail: '/cases/s1e05/thumb.webp',
     clueCards: [
       clue('s1e05', 1, '약독물 분석 결과',
         '혈중 GHB(감마하이드록시부티르산, 일명 물뽕) + 알코올 치사 농도 검출. ' +
@@ -324,7 +324,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e05/warning.jpg',
+      image: '/cases/s1e05/warning.webp',
       hint: '다니엘레는 절대 음료를 마시지 않기로 유명했다. 그런데 에너지 드링크가 옆에 있다. 그 드링크가 어떻게 그의 손에 들어갔는지 추적하라.',
     },
     questions: STD_QUESTIONS,
@@ -344,7 +344,7 @@ const SEASON_1 = [
       '자택 계단에서 굴러 떨어져 사망했다. 경찰은 실족사로 종결하려 했지만, ' +
       '현장을 살펴보면 석연치 않은 점들이 눈에 띈다. ' +
       '칼라브레제는 생전에 어떤 민감한 사건을 재심 중이었다.',
-    sceneImage: '/cases/s1e06/scene.jpg', thumbnail: '/cases/s1e06/thumb.jpg',
+    sceneImage: '/cases/s1e06/scene.webp', thumbnail: '/cases/s1e06/thumb.webp',
     clueCards: [
       clue('s1e06', 1, '사고 현장 사진 (계단 상태)',
         '계단 3번 난간 기둥 — 볼트 2개 중 2개 모두 없음. 구멍이 깨끗하게 제거됨. ' +
@@ -380,7 +380,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e06/warning.jpg',
+      image: '/cases/s1e06/warning.webp',
       hint: '계단은 거짓말하지 않는다. 난간 볼트가 왜 없는지, 그리고 3일간 누가 이 집에 드나들었는지 확인하라.',
     },
     questions: [
@@ -404,7 +404,7 @@ const SEASON_1 = [
       '자신의 아틀리에에서 의식불명 상태로 발견됐다. ' +
       '초기 진단은 심혈관 질환이었으나 부검 결과 납 중독이 확인됐다. ' +
       '수십 년간 쌓인 물감 속에 누군가의 독이 숨어 있었다.',
-    sceneImage: '/cases/s1e07/scene.jpg', thumbnail: '/cases/s1e07/thumb.jpg',
+    sceneImage: '/cases/s1e07/scene.webp', thumbnail: '/cases/s1e07/thumb.webp',
     clueCards: [
       clue('s1e07', 1, '부검 결과 (혈중 납 농도)',
         '혈중 납(Pb) 농도 110 μg/dL — 정상 기준(5 이하)의 22배. ' +
@@ -445,7 +445,7 @@ const SEASON_1 = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/s1e07/warning.jpg',
+      image: '/cases/s1e07/warning.webp',
       hint: '노인의 손 떨림이 병 때문만은 아닐 수 있다. 그가 매일 손에 쥐었던 물감을 분석하라. 그리고 누가 그 물감을 가져다줬는지.',
     },
     questions: STD_QUESTIONS,
@@ -469,7 +469,7 @@ const SPECIAL = [
       '할로윈 밤, 마을 공동 파티에서 주최자 빅터 크레인(45세)이 ' +
       '가면 파티 도중 사라졌다. 이튿날 새벽 뒷마당에서 의식불명 상태로 발견. ' +
       '그날 밤 파티엔 기묘한 일들이 연이어 벌어졌다.',
-    sceneImage: '/cases/sp01/scene.jpg', thumbnail: '/cases/sp01/thumb.jpg',
+    sceneImage: '/cases/sp01/scene.webp', thumbnail: '/cases/sp01/thumb.webp',
     clueCards: [
       clue('sp01', 1, '파티 초대 명단',
         '총 18명 초대, 코스튬 착용 필수. 나탈리 웨스트 포함. ' +
@@ -507,7 +507,7 @@ const SPECIAL = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/sp01/warning.jpg',
+      image: '/cases/sp01/warning.webp',
       hint: '가면 파티에서 얼굴은 알 수 없어도 옷은 남는다. 그날 밤 빨간 드레스를 입은 사람이 누구인지, 파티 사진과 코스튬 반납 기록을 함께 확인하라.',
     },
     questions: STD_QUESTIONS,
@@ -526,7 +526,7 @@ const SPECIAL = [
       '밀라노 31층 옥상 파티. 새해를 맞이하던 투자자 클라우디오 리치(50세)가 ' +
       '테라스 난간 너머로 추락해 사망했다. 경찰은 음주 실족 사고로 처리하려 했지만, ' +
       '난간 상태를 본 목격자들은 사고가 아니라고 주장한다.',
-    sceneImage: '/cases/sp02/scene.jpg', thumbnail: '/cases/sp02/thumb.jpg',
+    sceneImage: '/cases/sp02/scene.webp', thumbnail: '/cases/sp02/thumb.webp',
     clueCards: [
       clue('sp02', 1, '부검 결과 (혈중 알코올)',
         '사인: 추락에 의한 다발성 외상. 혈중 알코올 0.24% (위험 수준). ' +
@@ -562,7 +562,7 @@ const SPECIAL = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/sp02/warning.jpg',
+      image: '/cases/sp02/warning.webp',
       hint: '그는 스스로 난간을 넘지 않았다. 누군가 파티 전날 옥상에 올라 난간을 손봤다. 엘리베이터 기록을 확인하라.',
     },
     questions: STD_QUESTIONS,
@@ -581,7 +581,7 @@ const SPECIAL = [
       '시칠리아 팔레르모 빌라 결혼식. 신랑의 아버지 프란체스코 살라(45세)가 ' +
       '웨딩케이크를 먹은 뒤 갑작스러운 알레르기 쇼크로 사망했다. ' +
       '에피펜이 사라져 있었다. 축제의 자리에 누군가의 오랜 원한이 숨어 있었다.',
-    sceneImage: '/cases/sp03/scene.jpg', thumbnail: '/cases/sp03/thumb.jpg',
+    sceneImage: '/cases/sp03/scene.webp', thumbnail: '/cases/sp03/thumb.webp',
     clueCards: [
       clue('sp03', 1, '부검 결과 (아나필락시스)',
         '사인: 아나필락시스 쇼크 (급성 알레르기 반응). 혈중 히스타민 극도 상승. ' +
@@ -616,7 +616,7 @@ const SPECIAL = [
     ],
     warningCard: {
       id: 'warning', label: '경고 카드',
-      image: '/cases/sp03/warning.jpg',
+      image: '/cases/sp03/warning.webp',
       hint: '케이크 성분을 확인했는가. 그리고 에피펜은 왜 제자리에 없었는가. 두 가지 모두 의도적이라면, 그 계획을 실행한 사람은 주방에 접근할 수 있었어야 한다.',
     },
     questions: STD_QUESTIONS,
