@@ -1,15 +1,15 @@
-const fs = require('fs');
 const path = require('path');
+const { readJson, writeJsonAtomic } = require('./jsonStore');
 
-const FILE = path.join(__dirname, 'data', 'history.json');
+// DATA_DIR: 배포 시 영속 디스크 경로로 지정 (미지정 시 server/data)
+const FILE = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'history.json');
 
 function load() {
-  try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); }
-  catch { return []; }
+  return readJson(FILE, []);
 }
 
 function save(records) {
-  fs.writeFileSync(FILE, JSON.stringify(records, null, 2));
+  writeJsonAtomic(FILE, records);
 }
 
 // record: { userId, caseId, caseTitle, mode, correct, total, efficiencyScore, stamp, playedAt }

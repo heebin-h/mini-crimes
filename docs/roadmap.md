@@ -22,7 +22,19 @@
 - [ ] **P0-3 회귀 방지 E2E 레포 편입** — 2인 흐름 + 이전 방 거부 + 늦은 로비 진입 + 노트 복원 + 솔로
   - [ ] playwright devDependency 추가 여부 결정
 
+- [x] **P0-4 서버 권위·데이터 안전 (리뷰 높음 3건)** (`fix/server-authority-data-safety`) — 근거 `docs/review/game-dev-checklist-review_2026-11-14.md`
+  - [x] `answer:submit`·`game:reveal`은 `playing`에서만 (로비 제출 시 정답 전원 공개 차단), 비정상 payload 방어
+  - [x] 회원·기록 JSON: 손상 시 덮어쓰기 거부(500), 원자적 쓰기(tmp→rename), 디렉터리 자동 생성
+  - [x] `DATA_DIR` 환경변수 (영속 디스크 지정용)
+  - [ ] 배포 환경 영속 디스크/DB 결정 (휘발성 디스크면 재배포마다 계정 소실)
+- [ ] **P0-2 확장 (리뷰)** — `connectionStateRecovery` 적용 + 복구 실패 시 앱 재동기화, 끊김 퇴장 판정 유예(전원 제출 판정에서 잠깐 끊긴 사람 제외 방지)
+- [ ] **P0-3 확장 (리뷰)** — 서버 권위·네트워크(지연·끊김)·데이터 손상 테스트 추가, CI에 lint·E2E
+
 ## P1 — 추리 성립·배포
+
+- [ ] **P1-3 입력 검증·빈도 제한 (리뷰 중간)** — `room:create` caseId 검증(`caseExists` 미사용), 이름·노트 길이 상한, `maxHttpBufferSize`, `clue:reveal` id 검증, 로그인·가입·소켓 이벤트 rate limit
+- [ ] **P1-4 모바일 (리뷰 중간)** — 지원 여부 결정. 현재 iPhone 13에서 플레이 불가(현장 폭 100px, 단서 카드 겹침)
+- [ ] **P1-5 추론 경로표 + 외부 플레이테스트 (리뷰 중간)** — 케이스별 결론 3개 × 근거 단서 2개 이상, 용의자별 배제 단서 (P1-1과 함께)
 
 - [ ] **P1-1 SP01~SP03 단서 보강 6건** (README `알려진 미결 이슈`) — 기존 단서 텍스트 보강 권장(이미지 1:1 구조)
 - [x] **P1-2 서브경로 배포 이미지 404** — `assetUrl()` + BASE_URL (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
@@ -37,6 +49,9 @@
 - [x] 문서 이미지 파일명 .jpg → .webp (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
 
 ## P3 — 정리
+
+- [ ] 헬스체크(`/health`)·SIGTERM 종료 처리·에러 수집 (리뷰 낮음)
+- [ ] 소켓 인증 정책 결정 — 현재 토큰 없이 방 생성·참가 가능 (리뷰 낮음)
 
 - [ ] 빈 디렉터리 `client/public/cases/s1e01 s1e02 … sp03` 삭제
 - [ ] README의 존재하지 않는 `client/src/data/` 수정

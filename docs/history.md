@@ -53,3 +53,21 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - origin/main(PR #2 머지본)과 병합 트리에서 lint·build·회귀 묶음 PASS (이번 수정 전 시점), 충돌 없음
 
 **범위 밖으로 기록**: 서버 `currentRoomId`·socket.io room이 방을 옮겨도 해제되지 않아 이전 방의 `game:revealed`·`note:synced` 등이 다른 화면에 도착할 수 있음 (`room:state`만 roomId 필터). → roadmap P0-2 하위로 이관.
+
+## 2026-11-14 — 게임 개발 체크리스트 기반 전체 리뷰 + 높음 3건 수정 (`fix/server-authority-data-safety`)
+
+**리뷰**: 게임 QA 유형·멀티플레이 테스트·Socket.IO 공식 문서·추리 게임 설계·OWASP WebSocket·접근성·사전 제작 기준을 조사해 전체 대조. 결과 `docs/review/game-dev-checklist-review_2026-11-14.md` (높음 3·중간 8·낮음 3). 중간·낮음은 roadmap P0-2/P0-3 확장, P1-3~5, P3로 이관.
+
+**수정 (높음 3건)**
+- 로비에서 `answer:submit` 시 즉시 공개되어 정답이 전원에게 전송되던 문제(실측) → `answer:submit`·`game:reveal`은 `playing`에서만. payload 없음·null·문자열에도 서버 유지.
+- `users.json`·`history.json` 파싱 실패 시 `[]`로 대체 → 다음 쓰기가 전체 덮어쓰기 → `server/jsonStore.js`: ENOENT만 빈 값, 손상은 에러(파일 보존), 쓰기는 tmp→rename.
+- `server/data` 미추적이라 새 환경에서 쓰기 ENOENT(추정) → 쓰기 시 디렉터리 자동 생성. `DATA_DIR` env 추가(영속 디스크용).
+
+**결정**: 손상 파일은 자동 백업·복구하지 않고 요청을 500으로 거부 — 데이터 보존 우선, 운영자가 로그(`[store] corrupt JSON`)로 인지 후 수동 복구.
+
+**검증** (로컬, 서버 직접 기동 :3101, DATA_DIR 격리)
+- 없는 DATA_DIR → 가입 200·파일 생성 / 손상 파일 → 가입 500·파일 해시 동일·로그 출력·서버 생존 / 재기동 후 기존 계정 유지·tmp 잔여 없음
+- 로비 제출 `{ok:false, NOT_PLAYING}`·공개 없음, 로비 방장 공개 없음, 비정상 payload 3종 후 서버 생존, 진행 중 제출 → 공개·채점 정상
+- 브라우저 회귀(2인 ×5, 1인 팀, 이전 방 거부, 늦은 로비, 노트 복원, 솔로, 결과→뒤로가기) 전부 PASS, 실제 `server/data` 해시 불변
+
+**사고 기록**: 앞선 결과 화면 E2E(11-14 15:49)가 로컬 `server/data/history.json`에 테스트 기록 2건(userId `ra`·`rb`)을 남김. 이후 테스트는 DATA_DIR 격리.

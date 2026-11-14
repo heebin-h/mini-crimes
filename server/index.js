@@ -202,16 +202,24 @@ io.on('connection', (socket) => {
     socket.to(currentRoomId).emit('pointer:cleared', { playerId: socket.id });
   });
 
-  socket.on('answer:submit', ({ answers }, ack) => {
+  // 진행 중(playing)일 때만 제출·공개 허용 — 로비에서 제출 시 즉시 공개되어 정답이 전원에게 전송되던 문제 차단
+  socket.on('answer:submit', (payload, ack) => {
+    const reply = typeof ack === 'function' ? ack : () => {};
+    const room = getRoom(currentRoomId);
+    if (!room || room.phase !== 'playing') {
+      console.warn(`[answer:submit] rejected socket=${socket.id} room=${currentRoomId} phase=${room?.phase}`);
+      return reply({ ok: false, error: 'NOT_PLAYING' });
+    }
+    const answers = payload?.answers && typeof payload.answers === 'object' ? payload.answers : {};
     const allDone = submitAnswer(currentRoomId, socket.id, answers);
     io.to(currentRoomId).emit('answer:submitted', { playerId: socket.id });
-    ack?.({ ok: true });
+    reply({ ok: true });
     if (allDone) doReveal(currentRoomId);
   });
 
   socket.on('game:reveal', () => {
     const room = getRoom(currentRoomId);
-    if (room?.hostId === socket.id) doReveal(currentRoomId);
+    if (room?.hostId === socket.id && room.phase === 'playing') doReveal(currentRoomId);
   });
 
   socket.on('disconnect', () => {
