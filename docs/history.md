@@ -121,3 +121,9 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
   - 검증(iPhone 13 뷰포트): 케이스 선택·게임·단서 모달·제출 모달·결과·로비·프로필 전부 화면 밖 컨트롤 0, 가로 스크롤 없음. 게임 현장 사진 폭 100px → 390px, 단서 카드 겹침 0. 실기기 미확인.
 - CI: `deploy.yml`에 lint·단위 테스트 단계 추가(실패 시 배포 중단), Node 20 → 22(`node --test` 경로 글롭은 Node ≥21 — 20이면 테스트 파일을 못 찾아 실패), `VITE_SERVER_URL` 제거. `vite.config.js` 서버 프록시 제거, `client/.env.example`을 `VITE_BASE`·`VITE_PEER_*`로 교체.
   - 검증: 로컬에서 CI 순서(lint → test → `VITE_BASE=/mini-crimes/` build) 통과. GitHub Actions 실행은 push 후 확인 필요.
+
+## 2026-11-14 — S-8 문서 · `server/` 삭제 (`feat/static-p2p`)
+
+- `server/` 추적 파일 12개 git 삭제 (사용자 결정). 마지막 서버 버전 커밋 `b2ddb49`(README에 기록). 로컬 `server/data/`(실사용자 데이터, gitignore)·`server/node_modules`는 디스크에 유지.
+- README 재작성: 정적 구조, P2P 동작·한계(정답 완전 비공개 불가, 방장 이탈 시 종료, TURN 없음, 공용 시그널링 의존, 로컬 저장), 파일 구조, 환경변수(`VITE_BASE`·`VITE_PEER_*`), 테스트·배포, 이벤트 규약(`room:get`·`host:lost` 추가), 케이스 추가 경로(`client/src/data/*`).
+- P2 정리 1건: README S1E04 "수장고 둔기 살인" → "둔기 폭행(피해자 생존)" — 게임 데이터 synopsis "목숨은 건졌지만 아직 의식이 없다" 근거.

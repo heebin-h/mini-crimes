@@ -7,10 +7,10 @@
 
 > 결정: 배포는 GitHub Pages만 사용, 자체 서버 없음. 팀 수사는 P2P(WebRTC·PeerJS 1.5.5, 시그널링은 PeerJS 공용 서버 `0.peerjs.com`),
 > 계정은 기기별 로컬 프로필(비밀번호 없음). 방장 브라우저가 기존 서버의 방 로직(검증 포함)을 실행하고, 기존 소켓 이벤트 규약을 유지한다.
-> 이로써 서버 전제 항목(DATA_DIR·.env·JWT·헬스체크·서버 rate limit 등)은 대체·종료된다 — 각 항목에 표기.
+> 이로써 서버 전제 항목(DATA_DIR·.env·JWT·헬스체크·서버 rate limit 등)은 대체·종료된다. 아래 P0~P3의 서버 관련 미완료 항목은 S 단계로 대체됨(`server/` 삭제, 2026-11-14).
 
 - [x] **S-1 케이스 데이터·채점 클라이언트 이전** — `server/db.js`·`choices.js` → `client/src/data/`, 정답은 별도 청크(`answers-*.js`, 채점 시 동적 로드). 원본과 10케이스 동일성 스크립트 확인
-  - [ ] 한계 문서화(README): 정적 사이트라 정답을 완전히 숨길 수 없음(번들에 포함) — S-8
+  - [x] 한계 문서화(README): 정적 사이트라 정답을 완전히 숨길 수 없음(번들에 포함)
 - [x] **S-2 로컬 프로필 + 로컬 전적** — 로그인·회원가입 제거, 프로필 생성·선택·삭제(localStorage), 전적은 프로필별 저장(솔로·팀 모두 각 기기에 기록)
 - [x] **S-3 P2P 전송 계층** — `socket` 대체 모듈(동일 API: `on/off/emit/connect/id/connected/timeout`), ack·브로드캐스트·송신자 제외 전송
 - [x] **S-4 방장 방 로직** — `server/rooms.js`·`index.js` 핸들러 이식: phase 검증, payload 정규화·예외 격리, caseId·clueId 검증, 이름 20자·노트 5000자 상한, 피어별 빈도 제한 (P1-3 대체)
@@ -24,7 +24,7 @@
   - [x] 단위 테스트 17건 (`client/test/`, `npm test`)
   - [x] P2P E2E 8시나리오 (`client/e2e/p2p.e2e.mjs`, `npm run e2e`, 공용 PeerJS 서버 필요)
   - [x] CI(deploy.yml)에 lint·test 추가, Node 20→22 (`node --test` 글롭은 Node ≥21), `VITE_SERVER_URL` 제거
-- [ ] **S-8 문서** — README(정적 구조·P2P 한계·로컬 프로필), `VITE_SERVER_URL` 제거, `server/` 처리 결정
+- [x] **S-8 문서** — README(정적 구조·P2P 한계·로컬 프로필·테스트·배포·이벤트 규약·케이스 추가 경로) 재작성, `VITE_SERVER_URL` 제거, `server/` 삭제(사용자 결정, 마지막 서버 버전 `b2ddb49`)
 - [ ] **S-9 콘텐츠 (P1-1·P2)** — SP01~03 배제 단서 보강, 문서 불일치 정리
 
 ## P0 — 멀티(팀 수사) 진행 불가 버그
