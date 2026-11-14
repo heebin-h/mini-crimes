@@ -94,3 +94,23 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - 미검증: 클라 `NOT_PLAYING` 토스트는 정상 UI 흐름으로 유발 불가해 브라우저 확인 안 함
 
 **정리**: 로컬 `server/data/history.json`의 테스트 기록 2건(`ra`·`rb`) 삭제(사용자 승인, 백업 후).
+
+## 2026-11-14 — GitHub Pages 정적 전환: P2P 팀 수사 + 로컬 프로필 (`feat/static-p2p`)
+
+**결정** (사용자): 배포는 GitHub Pages만, 자체 서버 없음. 팀 수사 = P2P(WebRTC, PeerJS 1.5.5 MIT, 시그널링은 공용 `0.peerjs.com`), 계정 = 기기별 로컬 프로필(비밀번호 없음).
+
+**구조**
+- `client/src/data/{cases,choices,answers}.js`: 서버 데이터 이전. 정답은 별도 청크로 채점 시 동적 로드. 변환 후 원본과 10케이스 메타·선택지·정답·정답 선택지 불변식 동일 확인.
+- `client/src/net/hostRoom.js`: 서버 방 로직을 방장 브라우저용 순수 모듈로 이식 + 리뷰 미결 항목 반영(phase 검증, payload 정규화·예외 격리, caseId·clueId 검증, 이름 20·노트 5000·답안 200자, 피어별 토큰 버킷, 끊김 유예 20초, 같은 이름 신규 참가 거부(재접속 오매칭 방지), 방 인원 외 이벤트 무시).
+- `client/src/net/socket.js`: socket.io-client와 같은 API의 P2P 전송 계층 — 화면 코드는 import 경로 유지. 새로고침 복구(sessionStorage 세션·방장 방 스냅샷), 페이지 이탈 시 `bye` 신호, 끊긴 요청 재연결 후 재전송.
+- `client/src/profile/store.js` + `ProfileContext`·`ProfilePage`: 로그인·회원가입 대체. 전적은 프로필별 localStorage(최대 100건), 손상 값은 백업 키로 보존.
+- 제거: `AuthContext.jsx`, `AuthPage.jsx`, `api.js`, `socket.io-client` 의존.
+
+**디버깅 기록** (방장 이탈 E2E 실패 2회)
+1. Playwright `context.close()`는 `pagehide`를 발생시키지 않아 bye 없이 WebRTC 감지(수십 초)에 의존 → 25초 room:get 타임아웃이 먼저 홈 이동(안내 없음). 실제 이탈과 같게 `about:blank` 이동으로 테스트 변경, 동기화 실패 이동에도 안내 추가.
+2. 방 소멸 시 대기 요청에 LEFT 응답 → 화면이 '동기화 실패'로 먼저 이동 후 이탈 안내로 재이동(2회). 소멸 시 대기 요청은 응답 없이 폐기.
+
+**검증**
+- 단위 17건 PASS (방 로직 11·데이터/채점/프로필 6)
+- E2E 8/8 PASS (공용 PeerJS 서버 경유, 로컬 Vite): 프로필 진입, 2인 전체 흐름(단서·노트 동기화, 결과 3/3, 양쪽 전적), 1인 팀, 잘못된 코드·같은 이름 거부, 게스트 새로고침 복귀(단서·노트 유지 후 동기화 계속), 방장 새로고침 재호스팅(~0.8초) 후 게스트 재연결·결과, 방장 이탈 → 20.8초 후 안내·홈, 솔로 채점·전적
+- 미검증: 서로 다른 네트워크·모바일 데이터 환경의 P2P 연결(TURN 없음), 방장 네트워크 단절(bye 없음) 감지 시간

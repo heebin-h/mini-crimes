@@ -1,8 +1,2 @@
-import { io } from 'socket.io-client';
-
-const URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-
-export const socket = io(URL, {
-  autoConnect: false,
-  auth: (cb) => cb({ token: localStorage.getItem('mc_token') ?? '' }),
-});
+// 이전 socket.io-client 연결을 P2P 전송 계층으로 대체 (동일 API). 구현: ./net/socket.js
+export { socket } from './net/socket.js';

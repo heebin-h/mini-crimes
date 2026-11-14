@@ -11,17 +11,17 @@ export default function LobbyPage() {
   const [myId, setMyId] = useState(socket.id ?? '');
 
   useEffect(() => {
-    if (!socket.connected) socket.connect();
+    socket.connect(roomId); // 새로고침 시 P2P 세션 복구 (세션이 이 방일 때만)
     const onConnect = () => setMyId(socket.id);
     socket.on('connect', onConnect);
     return () => socket.off('connect', onConnect);
-  }, []);
+  }, [roomId]);
 
   // URL 직접 접근 등으로 room:state 미수신 시 홈으로
   useEffect(() => {
     const t = setTimeout(() => {
       if (!room) navigate('/');
-    }, 8000);
+    }, 30_000); // P2P 새로고침 복구(방장 재등록 최대 20초) 대기 포함
     return () => clearTimeout(t);
   }, [room, navigate]);
 
@@ -37,11 +37,15 @@ export default function LobbyPage() {
   }, [navigate, roomId]);
   // replace: 게임에서 뒤로가기 시 로비를 거치지 않게 (phase 경로와 동일하게 맞춤)
   const onGameStarted = useCallback(() => navigate(`/game/${roomId}`, { replace: true }), [navigate, roomId]);
-  // 방이 없다고 확정되면(새 소켓·다른 방) 8초 기다리지 않고 홈으로. 8초 fallback은 무응답 대비로 유지.
-  const onRoomSyncError = useCallback(() => navigate('/', { replace: true }), [navigate]);
+  // 방이 없다고 확정되면 fallback 타이머를 기다리지 않고 홈으로. 타이머는 무응답 대비로 유지.
+  const onRoomSyncError = useCallback(() => navigate('/', { replace: true, state: { notice: '방 정보를 불러오지 못했습니다 (방이 종료됐거나 연결이 끊김)' } }), [navigate]);
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('game:started', onGameStarted);
+  const onHostLost = useCallback(() => {
+    navigate('/', { replace: true, state: { notice: '방장과의 연결이 끊겨 방이 종료되었습니다' } });
+  }, [navigate]);
+  useSocketEvent('host:lost', onHostLost);
   useRoomSync(roomId, true, onRoomState, onRoomSyncError);
 
   function copyCode() {
