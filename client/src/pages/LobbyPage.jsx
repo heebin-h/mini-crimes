@@ -28,17 +28,21 @@ export default function LobbyPage() {
   // 로비 진입(navigate) 중 방장이 개시하면 game:started가 유실될 수 있어 phase로도 진입한다.
   // URL roomId와 다른 방 상태(이전 방 push 등)는 무시. 같은 라우트에서 roomId만 바뀌면 컴포넌트가 재사용되므로 초기화.
   useEffect(() => { setRoom(null); }, [roomId]);
+  // 정답 공개가 끝난 방(결과 화면에서 뒤로가기 등)은 로비로 쓰지 않고 홈으로 — 재개시 방지(서버 game:start도 lobby만 허용).
   const onRoomState = useCallback(r => {
     if (r?.roomId !== roomId) return;
+    if (r.phase === 'revealed') return navigate('/', { replace: true });
     setRoom(r);
     if (r.phase === 'playing') navigate(`/game/${roomId}`, { replace: true });
   }, [navigate, roomId]);
-  const onGameStarted = useCallback(() => navigate(`/game/${roomId}`), [navigate, roomId]);
+  // replace: 게임에서 뒤로가기 시 로비를 거치지 않게 (phase 경로와 동일하게 맞춤)
+  const onGameStarted = useCallback(() => navigate(`/game/${roomId}`, { replace: true }), [navigate, roomId]);
+  // 방이 없다고 확정되면(새 소켓·다른 방) 8초 기다리지 않고 홈으로. 8초 fallback은 무응답 대비로 유지.
+  const onRoomSyncError = useCallback(() => navigate('/', { replace: true }), [navigate]);
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('game:started', onGameStarted);
-  // 실패 시 별도 처리 없음 — 아래 8초 fallback이 홈으로 보낸다.
-  useRoomSync(roomId, true, onRoomState);
+  useRoomSync(roomId, true, onRoomState, onRoomSyncError);
 
   function copyCode() {
     navigator.clipboard.writeText(roomId);

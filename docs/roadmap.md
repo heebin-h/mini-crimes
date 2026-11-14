@@ -12,11 +12,13 @@
   - [x] 리뷰 반영: GamePage 동기화 실패 시 홈 이동 (빈 화면 고착 방지)
   - [x] 리뷰 반영: 진입 시 sharedNote 복원 (pull 결과에만 적용)
   - [x] 리뷰 반영: URL roomId와 다른 방 push 무시 + roomId 변경 시 Lobby 상태 초기화
-  - [x] 로컬 E2E (playwright 2컨텍스트) 통과
+  - [x] 리뷰 반영(머지 전): 서버 `game:start` lobby 단계만 허용, Lobby `revealed` 수신 시 홈, 동기화 실패 시 즉시 홈
+  - [x] 로컬 E2E (playwright 2컨텍스트) 통과 — 제출→결과→뒤로가기 포함
   - [ ] 배포 환경 실기 확인 (배포 여부 자체 미확인)
 - [ ] **P0-2 새로고침·재연결 시 방 복귀** — GamePage/LobbyPage에서 `connect()` + `connect` 시 `room:join` 재전송 후 `room:get`
   - [ ] 이름 중복 플레이어 재연결 오매칭 위험 검토 (`server/rooms.js` 이름 기반 매칭)
-  - 현재 동작: 새로고침 시 GamePage는 동기화 실패 → 홈 이동 (P0-1의 임시 처리)
+  - [ ] 방 이동 시 서버 `currentRoomId`·socket.io room 해제 (이전 방 `game:revealed`·`note:synced` 등이 다른 화면에 도착 가능, 현재 `room:state`만 roomId 필터)
+  - 현재 동작(P0-1 임시 처리): 새로고침 시 GamePage는 소켓 미연결로 `room:get` timeout(5s) → 홈, LobbyPage는 새 소켓이라 `ROOM_NOT_FOUND` → 즉시 홈
 - [ ] **P0-3 회귀 방지 E2E 레포 편입** — 2인 흐름 + 이전 방 거부 + 늦은 로비 진입 + 노트 복원 + 솔로
   - [ ] playwright devDependency 추가 여부 결정
 

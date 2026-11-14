@@ -161,7 +161,8 @@ io.on('connection', (socket) => {
 
   socket.on('game:start', () => {
     const room = getRoom(currentRoomId);
-    if (!room || room.hostId !== socket.id) return;
+    // lobby에서만 개시 — 정답 공개 후 재개시 시 이전 답안으로 재공개·history 중복 기록 방지
+    if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return;
     room.phase = 'playing';
     io.to(currentRoomId).emit('game:started', { caseId: room.caseId });
     io.to(currentRoomId).emit('room:state', roomToClient(room));

@@ -36,3 +36,20 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - 이미지 130장 JPEG → WebP(q75): 5.8MB → 4.2MB(−28%), 해상도 유지. JPEG q70 재인코딩은 원본보다 커져(7.5MB) 기각, WebP q60(−40%)은 현장 확대 시 열화 우려로 기각.
 - `/cases/...` 절대경로가 `VITE_BASE=/mini-crimes/` 빌드에서 도메인 루트로 요청돼 404 → `client/src/assetUrl.js`로 `BASE_URL` 적용.
 - 검증: `VITE_BASE=/mini-crimes/` build + preview에서 썸네일 7/7·현장 1280px·단서 640px 로드, 404 0건. GitHub Pages 실배포 미확인.
+
+## 2026-11-14 — P0-1 머지 전 리뷰 반영 (`fix/room-state-sync`)
+
+**리뷰** (독립 리뷰, 판정 "조건부 머지 가능"): 중간 1·낮음 3 전부 반영.
+- [중간] 정답 공개 후 결과 화면에서 뒤로가기 2회 → 로비 재진입 시 pull이 `revealed` 방을 돌려줘 방장에게 `▶ 수사 개시`가 다시 노출, `game:start`에 phase 검사가 없어 재개시·재공개·history 중복 기록 가능 (pull 도입으로 생긴 경로)
+  → 서버 `game:start`는 `phase === 'lobby'`만 허용, Lobby는 `revealed` 수신 시 홈으로
+- [낮음] `game:started` 경로도 `replace` — 게임에서 뒤로가기 시 로비를 거치지 않음
+- [낮음] Lobby 동기화 실패(`ROOM_NOT_FOUND`/timeout) 시 8초 대기 없이 즉시 홈 (8초 fallback은 무응답 대비로 유지)
+- [낮음] roadmap P0-2 "현재 동작" 설명 정정
+
+**검증** (로컬)
+- 소켓 직접: 생성→개시→제출→공개 후 `game:start` 재전송 → `game:started` 미수신, phase `revealed` 유지
+- 브라우저: 2인 제출→결과(3/3)→게스트 뒤로가기(게임 화면 안정, 루프 없음)→방장 뒤로가기 2회 → 홈, 개시 버튼 미노출, JS 에러 0
+- 회귀 묶음(2인 ×5, 1인 팀, 이전 방 거부, 늦은 로비 진입, 노트 복원, 솔로) 전부 PASS
+- origin/main(PR #2 머지본)과 병합 트리에서 lint·build·회귀 묶음 PASS (이번 수정 전 시점), 충돌 없음
+
+**범위 밖으로 기록**: 서버 `currentRoomId`·socket.io room이 방을 옮겨도 해제되지 않아 이전 방의 `game:revealed`·`note:synced` 등이 다른 화면에 도착할 수 있음 (`room:state`만 roomId 필터). → roadmap P0-2 하위로 이관.
