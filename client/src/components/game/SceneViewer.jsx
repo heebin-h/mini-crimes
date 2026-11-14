@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useZoom } from '../../hooks/useZoom';
+import { assetUrl } from '../../assetUrl';
 
 export default function SceneViewer({ imageUrl, caseId, caseTitle, remotePointers = [], onPointerMove, onPointerLeave }) {
   const containerRef = useRef(null);
@@ -36,7 +37,7 @@ export default function SceneViewer({ imageUrl, caseId, caseTitle, remotePointer
       onMouseLeave={onPointerLeave}
     >
       {imageUrl ? (
-        <img src={imageUrl} alt="범죄 현장" style={imgStyle} />
+        <img src={assetUrl(imageUrl)} alt="범죄 현장" style={imgStyle} />
       ) : (
         <NoSceneImage />
       )}

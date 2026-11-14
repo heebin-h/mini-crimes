@@ -127,3 +127,21 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - `server/` 추적 파일 12개 git 삭제 (사용자 결정). 마지막 서버 버전 커밋 `b2ddb49`(README에 기록). 로컬 `server/data/`(실사용자 데이터, gitignore)·`server/node_modules`는 디스크에 유지.
 - README 재작성: 정적 구조, P2P 동작·한계(정답 완전 비공개 불가, 방장 이탈 시 종료, TURN 없음, 공용 시그널링 의존, 로컬 저장), 파일 구조, 환경변수(`VITE_BASE`·`VITE_PEER_*`), 테스트·배포, 이벤트 규약(`room:get`·`host:lost` 추가), 케이스 추가 경로(`client/src/data/*`).
 - P2 정리 1건: README S1E04 "수장고 둔기 살인" → "둔기 폭행(피해자 생존)" — 게임 데이터 synopsis "목숨은 건졌지만 아직 의식이 없다" 근거.
+
+## 2026-11-14 — origin/main(PR #2) 병합: WebP·assetUrl 반영 (`feat/static-p2p`)
+
+**발견**: 이 브랜치는 PR #2 머지 전 시점에서 갈라져 케이스 경로가 `.jpg`였다. 그대로 main에 머지하면 main에는 WebP만 있으므로 모든 이미지가 깨진다. 또 `server/db.js`(main에서 수정, 여기서 삭제)가 충돌한다.
+
+**처리**: `git merge origin/main`
+- 충돌 3건
+  - `README.md`: 이 브랜치 버전 채택(WebP·assetUrl 이미 반영)
+  - `client/src/data/cases.js`: git이 `server/db.js`의 이름 변경으로 인식 → 이 브랜치 버전 채택 후 경로 `.jpg`→`.webp` 22곳
+  - `CaseSelectPage.jsx`: import 블록 병합(`assetUrl` + 프로필·로컬 데이터)
+- 결과: 추적 jpg 0 / webp 130, `server/` 추적 0.
+
+**검증**
+- lint 신규 경고 없음
+- 단위 17 PASS (이미지 존재 검사가 WebP 경로 확인)
+- `VITE_BASE=/mini-crimes/` 빌드 성공
+- P2P E2E 8/8 PASS
+- 모바일 7화면: 화면 밖 컨트롤 0, 가로 스크롤 없음
