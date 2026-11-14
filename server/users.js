@@ -1,8 +1,7 @@
 const path = require('path');
-const { readJson, writeJsonAtomic } = require('./jsonStore');
+const { DATA_DIR, readJson, writeJsonAtomic } = require('./jsonStore');
 
-// DATA_DIR: 배포 시 영속 디스크 경로로 지정 (미지정 시 server/data)
-const FILE = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'users.json');
+const FILE = path.join(DATA_DIR, 'users.json');
 
 function load() {
   return readJson(FILE, []);

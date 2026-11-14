@@ -6,7 +6,7 @@
 ## 결론
 
 - **PR `fix/room-state-sync`는 머지 가능.** 아래 문제는 모두 이 PR 이전부터 있던 것이고, 이 PR이 만든 회귀는 없음.
-- **다음 작업 최우선 2건(높음)**:
+- **다음 작업 최우선(높음)** — 아래 2건 + 후속 리뷰에서 실측된 "빈 payload로 서버 다운" 1건(§3 첫 행):
   - 대기 중(로비) 답안 제출 시 **정답이 전원에게 공개됨** (실측)
   - 회원 파일 읽기 실패 시 **전체 계정이 지워질 수 있음** (코드 근거)
 - 배포 전 차단 요소:
@@ -50,6 +50,7 @@
 
 | 심각도 | 위치 | 문제 | 근거 | 수정안 |
 |---|---|---|---|---|
+| **높음** (후속 리뷰에서 발견) | `server/index.js` 소켓 핸들러 6개 | payload 없이 emit 1회로 **서버 프로세스 종료** (`room:create`·`room:join`·`note:update`·`clue:reveal`·`clue:focus`·`pointer:move`) | 실측: exit=1, `TypeError: Cannot destructure property ... of 'undefined'`. socket.io가 리스너를 nextTick에서 호출 → uncaughtException | 공통 래퍼로 payload 정규화 + try/catch (`41b9673` 후속 커밋에서 수정) |
 | **높음** | `server/index.js` `answer:submit`·`game:reveal` 핸들러 | phase 검사 없음 → **로비에서 답안 제출 시 즉시 공개, 정답이 전원에게 전송** | 실측: 로비에서 `answer:submit` → `game:revealed` 수신, `caseAnswer.suspect.text = "루카 모레노 (조카)"` | `const room = getRoom(currentRoomId); if (!room \|\| room.phase !== 'playing') return ack?.({ ok:false, error:'NOT_PLAYING' });` — `game:reveal`도 동일 |
 | **높음** | `server/users.js:7-9,11-13,24-30` (`history.js` 동일) | 파일 파싱 실패(부분 쓰기·손상) 시 `[]` 반환 → 다음 가입이 `[]+신규`로 **덮어써 전체 계정 소실**. 쓰기가 원자적이지 않음 | 코드: `catch { return []; }` 후 `save(all)` | `load()`: ENOENT만 `[]`, 그 외는 throw. `save()`: `fs.writeFileSync(FILE+'.tmp', ...); fs.renameSync(FILE+'.tmp', FILE);` |
 | **높음**(배포 시) | `server/users.js:4`, `.gitignore` | `server/data/`가 git에 없음(추적 0건) → 새 배포 환경에서 `writeFileSync` ENOENT → 회원가입 500 (추정, 미실측). Render 등 휘발성 디스크면 재배포마다 계정·기록 소실 | `git ls-files server/data` = 0 | 기동 시 `fs.mkdirSync(path.dirname(FILE), { recursive: true })`. 영속 디스크 또는 DB 결정 필요 |

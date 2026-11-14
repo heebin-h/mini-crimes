@@ -48,7 +48,7 @@ npm run dev            # http://localhost:5173
 | 최유나 | yuna@test.com |
 | 정하은 | haeun@test.com |
 
-`server/data/users.json`이 없으면 서버 최초 실행 시 빈 배열로 자동 생성된다.
+`users.json`이 없으면 빈 목록으로 시작하고, 첫 회원가입 시 파일(과 디렉터리)이 생성된다. 파일이 손상돼 있으면 덮어쓰지 않고 가입·로그인이 500으로 거부된다(로그 `[store] corrupt JSON`) — 파일을 수동 복구할 것.
 
 ---
 
@@ -62,6 +62,9 @@ npm run dev            # http://localhost:5173
 | `JWT_SECRET` | `minicrimessecret2025` | **프로덕션에서는 반드시 교체** |
 | `CLIENT_URL` | `http://localhost:5173` | CORS 허용 Origin (배포 시 클라이언트 도메인) |
 | `NODE_ENV` | — | `production` 설정 시 `client/dist` 정적 서빙 활성화 |
+| `DATA_DIR` | `server/data` | 회원·기록 JSON 저장 경로(절대경로 권장). 휘발성 디스크 호스팅이면 영속 디스크로 지정. 기동 로그 `[store] data dir`로 확인 |
+
+`server/.env`는 서버 기동 시 자동 로드된다(Node ≥20.12, 이미 설정된 환경변수가 우선).
 
 ```bash
 # server/.env 예시
@@ -146,7 +149,7 @@ NODE_ENV=production
 ```
 server/
 ├── data/
-│   ├── users.json       # 회원 목록 (gitignore, 서버 최초 실행 시 자동 생성)
+│   ├── users.json       # 회원 목록 (gitignore, 첫 가입 시 생성, DATA_DIR로 위치 변경 가능)
 │   └── history.json     # 플레이 기록 (gitignore, 첫 플레이 후 자동 생성)
 ├── db.js                # 케이스 데이터 + 정답 (10개 케이스)
 ├── choices.js           # 선택지 목록 (correct:true = 서버 전용)

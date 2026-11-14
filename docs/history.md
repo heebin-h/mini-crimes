@@ -71,3 +71,26 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - 브라우저 회귀(2인 ×5, 1인 팀, 이전 방 거부, 늦은 로비, 노트 복원, 솔로, 결과→뒤로가기) 전부 PASS, 실제 `server/data` 해시 불변
 
 **사고 기록**: 앞선 결과 화면 E2E(11-14 15:49)가 로컬 `server/data/history.json`에 테스트 기록 2건(userId `ra`·`rb`)을 남김. 이후 테스트는 DATA_DIR 격리.
+
+## 2026-11-14 — `41b9673` 독립 리뷰 반영 (`fix/server-authority-data-safety`)
+
+**리뷰 판정**: 머지 가능(중간 2·낮음 6). 단 중간 #2 "다른 소켓 핸들러 null payload 크래시"는 실측 결과 **높음으로 상향** — `room:create`·`room:join`·`note:update`·`clue:reveal`·`clue:focus`·`pointer:move`에 payload 없이 emit 1회로 서버 프로세스 종료(exit=1, TypeError). socket.io 4.8이 리스너를 `process.nextTick`에서 호출해 uncaughtException이 됨. 이 PR 이전부터 존재.
+
+**수정**
+- 모든 소켓 핸들러 공통 래퍼 `on()`: payload 객체 정규화(`emit(ev, cb)` 형태 포함), 예외 격리·로그·`{ok:false, INTERNAL}` ack
+- `server/.env` 자동 로드(`process.loadEnvFile`, Node ≥20.12, 기존 env 우선) — 이전엔 어디서도 로드하지 않아 문서대로 `DATA_DIR`·`JWT_SECRET`을 적어도 무시됨. 기동 시 `[store] data dir` 로그
+- jsonStore: 임시 파일 0600, fsync, 실패 시 tmp 정리, 배열 형식 검증(`{}`·`null` → STORE_CORRUPT), `DATA_DIR` 절대경로화
+- history 기록 실패 로그(기존 `catch {}` 무음), 멀티 기록 플레이어별 격리
+- 전역 에러 핸들러: status 없는 내부 오류는 `INTERNAL_SERVER_ERROR`만 응답(fs 오류 메시지의 서버 절대경로 노출 방지)
+- 클라: 제출 거부(`NOT_PLAYING`) 시 토스트 안내
+- README 환경변수 표 `DATA_DIR`·.env 로드·users.json 생성 시점 정정
+
+**검증** (서버 직접 기동 :3101, DATA_DIR 격리)
+- 12개 이벤트 × 이상 payload 6종(없음·null·문자열·숫자·배열·함수), 방 안/밖 → 서버 생존, TypeError 0
+- 이전 크래시 재현 6개 핸들러 전부 alive
+- 가입 파일 권한 600, 비배열 JSON → 로그인 500 STORE_CORRUPT·파일 보존, EACCES → `INTERNAL_SERVER_ERROR`(경로 미노출)
+- `.env`의 DATA_DIR·JWT_SECRET 적용(복사본 서버로 확인)
+- 이전 데이터·권위 검증, 브라우저 회귀 전부 PASS, 실제 `server/data` 해시 불변
+- 미검증: 클라 `NOT_PLAYING` 토스트는 정상 UI 흐름으로 유발 불가해 브라우저 확인 안 함
+
+**정리**: 로컬 `server/data/history.json`의 테스트 기록 2건(`ra`·`rb`) 삭제(사용자 승인, 백업 후).

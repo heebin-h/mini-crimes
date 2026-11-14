@@ -214,7 +214,10 @@ export default function GamePage() {
         state: { playerAnswers: { solo: answers }, caseAnswer, scores: { solo: scores }, caseId, revealedClues, warningUsed, totalClues, questions: activeCaseData?.questions ?? [] },
       });
     } else {
-      socket.emit('answer:submit', { answers }, () => {});
+      socket.emit('answer:submit', { answers }, (res) => {
+        // 서버는 진행 중(playing)일 때만 제출을 받는다 — 거부 시 무반응으로 보이지 않게 안내
+        if (!res?.ok) showToast(res?.error === 'NOT_PLAYING' ? '진행 중인 게임이 아닙니다' : '제출에 실패했습니다');
+      });
     }
   }
 

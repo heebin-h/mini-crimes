@@ -1,8 +1,17 @@
+const path = require('path');
+
+// server/.env 로드 — 다른 모듈 require 전에 실행해야 DATA_DIR 등이 반영된다.
+// 이미 설정된 환경변수가 우선. loadEnvFile은 Node ≥20.12, 없는 버전은 건너뜀(환경변수 직접 설정 필요).
+try {
+  process.loadEnvFile?.(path.join(__dirname, '.env'));
+} catch (e) {
+  if (e.code !== 'ENOENT') console.warn('[env] .env load failed:', e.message);
+}
+
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const path = require('path');
 const {
   createRoom, joinRoom, leaveRoom, getRoom,
   updateNote, revealClue, useWarning,
@@ -13,6 +22,7 @@ const { scoreAll } = require('./scoring');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const users = require('./users');
+const { DATA_DIR } = require('./jsonStore');
 const history = require('./history');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'minicrimessecret2025';
@@ -99,7 +109,9 @@ app.post('/api/score', (req, res) => {
         playedAt: new Date().toISOString(),
       });
     }
-  } catch {}
+  } catch (e) {
+    console.error('[history] solo add failed:', e.message);
+  }
 
   res.json({ caseAnswer, scores });
 });
@@ -127,7 +139,22 @@ io.on('connection', (socket) => {
     if (tok) socketUserMap.set(socket.id, jwt.verify(tok, JWT_SECRET).id);
   } catch {}
 
-  socket.on('room:create', ({ caseId, playerName }, ack) => {
+  // 모든 이벤트 핸들러 공통 래퍼.
+  // socket.io 4.8은 리스너를 process.nextTick에서 호출하므로 핸들러 예외가 uncaughtException → 프로세스 종료로 이어진다
+  // (예: payload 없이 emit('note:update') 한 번으로 서버 다운). payload를 객체로 정규화하고 예외를 격리한다.
+  const on = (event, handler) => socket.on(event, (payload, ack) => {
+    if (typeof payload === 'function') { ack = payload; payload = undefined; } // emit(ev, cb) 형태
+    const data = payload && typeof payload === 'object' ? payload : {};
+    const reply = typeof ack === 'function' ? ack : undefined;
+    try {
+      handler(data, reply);
+    } catch (e) {
+      console.error(`[socket] ${event} handler error socket=${socket.id}:`, e);
+      reply?.({ ok: false, error: 'INTERNAL' });
+    }
+  });
+
+  on('room:create', ({ caseId, playerName }, ack) => {
     const room = createRoom(caseId, socket.id, playerName || '익명');
     currentRoomId = room.roomId;
     socket.join(room.roomId);
@@ -135,7 +162,7 @@ io.on('connection', (socket) => {
     socket.emit('room:state', roomToClient(room));
   });
 
-  socket.on('room:join', ({ roomId, playerName }, ack) => {
+  on('room:join', ({ roomId, playerName }, ack) => {
     const result = joinRoom(roomId, socket.id, playerName || '익명');
     if (!result.ok) return ack?.({ ok: false, error: result.error });
     currentRoomId = roomId;
@@ -147,9 +174,9 @@ io.on('connection', (socket) => {
   // 현재 방 상태 pull — room:state push는 페이지 전환(navigate) 중 구독 전에 도착해 유실될 수 있어,
   // Lobby/Game 페이지가 마운트 시 직접 요청한다.
   // 요청 roomId(URL)와 이 소켓이 create/join 한 방이 다르면 거부 — 뒤로가기 등으로 이전 방 상태가 노출되는 것 방지.
-  socket.on('room:get', (payload, ack) => {
-    if (typeof ack !== 'function') return;
-    const reqId = payload?.roomId;
+  on('room:get', (data, ack) => {
+    if (!ack) return;
+    const reqId = data.roomId;
     const room = getRoom(currentRoomId);
     if (!room || room.roomId !== reqId) {
       // currentRoomId 없음 = 새 소켓(새로고침 등) 정상 경로라 로그 생략
@@ -159,7 +186,7 @@ io.on('connection', (socket) => {
     ack({ ok: true, room: roomToClient(room) });
   });
 
-  socket.on('game:start', () => {
+  on('game:start', () => {
     const room = getRoom(currentRoomId);
     // lobby에서만 개시 — 정답 공개 후 재개시 시 이전 답안으로 재공개·history 중복 기록 방지
     if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return;
@@ -168,13 +195,13 @@ io.on('connection', (socket) => {
     io.to(currentRoomId).emit('room:state', roomToClient(room));
   });
 
-  socket.on('note:update', ({ text }) => {
+  on('note:update', ({ text }) => {
     updateNote(currentRoomId, text);
     socket.to(currentRoomId).emit('note:synced', { text });
   });
 
   // 단서 카드 공개 (최초 공개 시 전체 브로드캐스트)
-  socket.on('clue:reveal', ({ clueId }) => {
+  on('clue:reveal', ({ clueId }) => {
     const added = revealClue(currentRoomId, clueId);
     if (added) {
       const room = getRoom(currentRoomId);
@@ -184,40 +211,40 @@ io.on('connection', (socket) => {
     socket.to(currentRoomId).emit('clue:focused', { playerId: socket.id, clueId });
   });
 
-  socket.on('clue:focus', ({ clueId }) => {
+  on('clue:focus', ({ clueId }) => {
     socket.to(currentRoomId).emit('clue:focused', { playerId: socket.id, clueId });
   });
 
   // 경고 카드 사용
-  socket.on('warning:use', () => {
+  on('warning:use', () => {
     const ok = useWarning(currentRoomId);
     if (ok) io.to(currentRoomId).emit('warning:used');
   });
 
-  socket.on('pointer:move', ({ x, y }) => {
+  on('pointer:move', ({ x, y }) => {
     socket.to(currentRoomId).emit('pointer:moved', { playerId: socket.id, x, y });
   });
 
-  socket.on('pointer:leave', () => {
+  on('pointer:leave', () => {
     socket.to(currentRoomId).emit('pointer:cleared', { playerId: socket.id });
   });
 
   // 진행 중(playing)일 때만 제출·공개 허용 — 로비에서 제출 시 즉시 공개되어 정답이 전원에게 전송되던 문제 차단
-  socket.on('answer:submit', (payload, ack) => {
-    const reply = typeof ack === 'function' ? ack : () => {};
+  on('answer:submit', (data, ack) => {
+    const reply = ack ?? (() => {});
     const room = getRoom(currentRoomId);
     if (!room || room.phase !== 'playing') {
       console.warn(`[answer:submit] rejected socket=${socket.id} room=${currentRoomId} phase=${room?.phase}`);
       return reply({ ok: false, error: 'NOT_PLAYING' });
     }
-    const answers = payload?.answers && typeof payload.answers === 'object' ? payload.answers : {};
+    const answers = data.answers && typeof data.answers === 'object' ? data.answers : {};
     const allDone = submitAnswer(currentRoomId, socket.id, answers);
     io.to(currentRoomId).emit('answer:submitted', { playerId: socket.id });
     reply({ ok: true });
     if (allDone) doReveal(currentRoomId);
   });
 
-  socket.on('game:reveal', () => {
+  on('game:reveal', () => {
     const room = getRoom(currentRoomId);
     if (room?.hostId === socket.id && room.phase === 'playing') doReveal(currentRoomId);
   });
@@ -246,21 +273,31 @@ function doReveal(roomId) {
       const userId = socketUserMap.get(pid);
       if (!userId) continue;
       const correct = Object.values(scores).filter(s => s.correct).length;
-      history.add({
-        userId, caseId: result.caseId, caseTitle, mode: 'multi',
-        correct, total,
-        stamp: correct === total ? 'SOLVED' : correct === 0 ? 'FAILED' : 'PARTIAL',
-        playedAt: new Date().toISOString(),
-      });
+      try { // 한 명 실패가 나머지 기록을 막지 않도록 개별 격리
+        history.add({
+          userId, caseId: result.caseId, caseTitle, mode: 'multi',
+          correct, total,
+          stamp: correct === total ? 'SOLVED' : correct === 0 ? 'FAILED' : 'PARTIAL',
+          playedAt: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error(`[history] multi add failed user=${userId}:`, e.message);
+      }
     }
-  } catch {}
+  } catch (e) {
+    console.error('[history] multi record failed:', e.message);
+  }
 }
 
 // 전역 에러 핸들러 (Express 5: async 라우트 에러 자동 전달)
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message ?? err);
-  res.status(err.status ?? 500).json({ error: err.message ?? 'INTERNAL_SERVER_ERROR' });
+  // status가 지정된 의도된 오류만 메시지 노출. fs 오류 등 내부 메시지(서버 절대경로 포함)는 숨김
+  res.status(err.status ?? 500).json({ error: err.status ? err.message : 'INTERNAL_SERVER_ERROR' });
 });
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => console.log(`server listening on :${PORT}`));
+httpServer.listen(PORT, () => {
+  console.log(`server listening on :${PORT}`);
+  console.log(`[store] data dir: ${DATA_DIR}`); // 영속 디스크 지정 여부 확인용
+});

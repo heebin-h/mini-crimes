@@ -23,7 +23,10 @@
   - [ ] playwright devDependency 추가 여부 결정
 
 - [x] **P0-4 서버 권위·데이터 안전 (리뷰 높음 3건)** (`fix/server-authority-data-safety`) — 근거 `docs/review/game-dev-checklist-review_2026-11-14.md`
-  - [x] `answer:submit`·`game:reveal`은 `playing`에서만 (로비 제출 시 정답 전원 공개 차단), 비정상 payload 방어
+  - [x] `answer:submit`·`game:reveal`은 `playing`에서만 (로비 제출 시 정답 전원 공개 차단)
+  - [x] 리뷰 반영: 모든 소켓 핸들러 공통 래퍼 — payload 정규화 + 예외 격리 (빈 payload 한 번으로 서버 프로세스 종료되던 6개 핸들러, 실측)
+  - [x] 리뷰 반영: `server/.env` 자동 로드(이전엔 미로드라 DATA_DIR·JWT_SECRET 문서대로 적어도 무시), 기동 시 data dir 로그
+  - [x] 리뷰 반영: 저장 파일 0600·fsync·실패 시 tmp 정리·배열 형식 검증, history 실패 로그·플레이어별 격리, 내부 오류 메시지 비노출, 제출 거부 시 클라 안내
   - [x] 회원·기록 JSON: 손상 시 덮어쓰기 거부(500), 원자적 쓰기(tmp→rename), 디렉터리 자동 생성
   - [x] `DATA_DIR` 환경변수 (영속 디스크 지정용)
   - [ ] 배포 환경 영속 디스크/DB 결정 (휘발성 디스크면 재배포마다 계정 소실)
