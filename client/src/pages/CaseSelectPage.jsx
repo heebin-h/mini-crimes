@@ -81,7 +81,7 @@ export default function CaseSelectPage() {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* 상단 헤더 */}
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+      <header className="mc-header" style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
         <div>
           <div className="brand-logo">MINI CRIMES</div>
           <div className="label" style={{ marginTop: 2 }}>Classified Case Files — Digital Investigation System</div>
@@ -100,9 +100,9 @@ export default function CaseSelectPage() {
         <span className="stamp stamp-red">Restricted Access</span>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="mc-select-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 사이드바 */}
-        <aside style={{ width: 280, borderRight: '1px solid var(--border)', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, overflowY: 'auto', flexShrink: 0 }}>
+        <aside className="mc-select-aside" style={{ width: 280, borderRight: '1px solid var(--border)', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, overflowY: 'auto', flexShrink: 0 }}>
           {/* 수사관 정보 */}
           <section>
             <div className="label" style={{ marginBottom: 10 }}>[ 수사관 정보 ]</div>
@@ -188,7 +188,7 @@ export default function CaseSelectPage() {
         </aside>
 
         {/* 케이스 목록 */}
-        <main style={{ flex: 1, padding: 28, overflowY: 'auto' }}>
+        <main className="mc-select-main" style={{ flex: 1, padding: 28, overflowY: 'auto' }}>
           {/* 시즌 탭 */}
           <div style={{ display: 'flex', gap: 1, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
             {SEASONS.map(s => {

@@ -60,7 +60,7 @@ export default function LobbyPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 헤더 */}
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <header className="mc-header" style={{ borderBottom: '1px solid var(--border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 16 }}>
         <div className="brand-logo">MINI CRIMES</div>
         <span style={{ color: 'var(--border)' }}>|</span>
         <div className="label">BRIEFING ROOM</div>

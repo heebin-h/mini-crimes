@@ -251,9 +251,9 @@ export default function GamePage() {
   );
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="mc-game" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 헤더 */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+      <div className="mc-game-header" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <span className="brand-logo">MINI CRIMES</span>
         {activeCaseData && (
           <>
@@ -280,9 +280,9 @@ export default function GamePage() {
       </div>
 
       {/* 메인 레이아웃 */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="mc-game-main" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 범죄 현장 뷰어 */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="mc-game-scene" style={{ flex: 1, minWidth: 0 }}>
           <SceneViewer
             imageUrl={activeCaseData?.sceneImage}
             caseId={activeCaseData?.id}
@@ -294,9 +294,9 @@ export default function GamePage() {
         </div>
 
         {/* 우측 패널 */}
-        <div style={{ width: 290, flexShrink: 0, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--surface)', overflow: 'hidden' }}>
+        <div className="mc-game-panel" style={{ width: 290, flexShrink: 0, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--surface)', overflow: 'hidden' }}>
           {/* 단서 카드 */}
-          <div style={{ flex: 1, padding: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div className="mc-game-clues" style={{ flex: 1, padding: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <CluePanel
               clueCards={activeCaseData?.clueCards ?? []}
               warningCard={activeCaseData?.warningCard ?? null}

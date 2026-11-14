@@ -114,3 +114,10 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - 단위 17건 PASS (방 로직 11·데이터/채점/프로필 6)
 - E2E 8/8 PASS (공용 PeerJS 서버 경유, 로컬 Vite): 프로필 진입, 2인 전체 흐름(단서·노트 동기화, 결과 3/3, 양쪽 전적), 1인 팀, 잘못된 코드·같은 이름 거부, 게스트 새로고침 복귀(단서·노트 유지 후 동기화 계속), 방장 새로고침 재호스팅(~0.8초) 후 게스트 재연결·결과, 방장 이탈 → 20.8초 후 안내·홈, 솔로 채점·전적
 - 미검증: 서로 다른 네트워크·모바일 데이터 환경의 P2P 연결(TURN 없음), 방장 네트워크 단절(bye 없음) 감지 시간
+
+## 2026-11-14 — S-6 모바일 반응형 · S-7 CI (`feat/static-p2p`)
+
+- 모바일: 화면 코드가 inline style이라 주요 컨테이너에 className(`mc-header`·`mc-select-*`·`mc-game-*`)을 붙이고 `index.css` ≤768px 미디어쿼리에서 `!important`로 세로 배치. 데스크톱 스타일은 불변.
+  - 검증(iPhone 13 뷰포트): 케이스 선택·게임·단서 모달·제출 모달·결과·로비·프로필 전부 화면 밖 컨트롤 0, 가로 스크롤 없음. 게임 현장 사진 폭 100px → 390px, 단서 카드 겹침 0. 실기기 미확인.
+- CI: `deploy.yml`에 lint·단위 테스트 단계 추가(실패 시 배포 중단), Node 20 → 22(`node --test` 경로 글롭은 Node ≥21 — 20이면 테스트 파일을 못 찾아 실패), `VITE_SERVER_URL` 제거. `vite.config.js` 서버 프록시 제거, `client/.env.example`을 `VITE_BASE`·`VITE_PEER_*`로 교체.
+  - 검증: 로컬에서 CI 순서(lint → test → `VITE_BASE=/mini-crimes/` build) 통과. GitHub Actions 실행은 push 후 확인 필요.
