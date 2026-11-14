@@ -22,7 +22,9 @@
   - [ ] 실제 iOS Safari·Android Chrome 기기 확인 (터치 줌·주소창 높이 변화)
 - [x] **S-7 테스트·CI (P0-3 대체)** — 방 로직·채점·프로필 단위 테스트(`node --test`), CI에 lint·test, E2E 스크립트 레포 편입
   - [x] 단위 테스트 17건 (`client/test/`, `npm test`)
-  - [x] P2P E2E 8시나리오 (`client/e2e/p2p.e2e.mjs`, `npm run e2e`, 공용 PeerJS 서버 필요)
+  - [x] P2P E2E 9시나리오 (`client/e2e/p2p.e2e.mjs`, `npm run e2e`, `ONLY=` 필터, 공용 PeerJS 서버 필요)
+  - [x] 독립 리뷰 반영 (높음 2·중간 3·낮음 다수, 단위 21건)
+  - [ ] 참가 비밀 토큰(이름·id 사칭 방지) — 구조적 한계로 README 기록, 필요 시 후속
   - [x] CI(deploy.yml)에 lint·test 추가, Node 20→22 (`node --test` 글롭은 Node ≥21), `VITE_SERVER_URL` 제거
 - [x] **S-8 문서** — README(정적 구조·P2P 한계·로컬 프로필·테스트·배포·이벤트 규약·케이스 추가 경로) 재작성, `VITE_SERVER_URL` 제거, `server/` 삭제(사용자 결정, 마지막 서버 버전 `b2ddb49`)
 - [x] **S-9 콘텐츠 (P1-1·P2)** — SP01~03 배제 단서 보강, 문서 불일치 정리

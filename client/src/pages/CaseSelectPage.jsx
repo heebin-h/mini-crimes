@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import CaseBriefModal from '../components/CaseBriefModal';
 import { assetUrl } from '../assetUrl';
+import { useSocketEvent } from '../hooks/useSocket';
 import { useProfile } from '../ProfileContext';
 import { profileStore } from '../profile/store';
 import { ALL_CASES } from '../data/cases';
@@ -34,6 +35,9 @@ export default function CaseSelectPage() {
 
   // 홈 진입 = 방 나가기 (방장이면 방 종료). 새로고침 복구 세션도 정리
   useEffect(() => { socket.leave(); }, []);
+  // 참가 도중 연결이 끊겨 재연결도 실패한 경우 — '연결 중' 상태에 멈추지 않게
+  const onHostLost = useCallback(() => { setJoining(false); setError(JOIN_ERRORS.CONNECT_TIMEOUT); }, []);
+  useSocketEvent('host:lost', onHostLost);
 
   const filtered = cases.filter(c =>
     season === 'Special' ? c.season == null : c.season === season

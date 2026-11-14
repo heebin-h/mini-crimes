@@ -51,15 +51,24 @@ const ss = {
 function openPeer(id) {
   return new Promise((resolve, reject) => {
     const peer = id ? new Peer(id, peerOptions()) : new Peer(peerOptions());
-    const timer = setTimeout(() => { peer.destroy(); reject(Object.assign(new Error('peer open timeout'), { type: 'timeout' })); }, T.peerOpen);
-    peer.once('open', () => { clearTimeout(timer); resolve(peer); });
-    peer.once('error', e => { clearTimeout(timer); peer.destroy(); reject(e); });
+    // open 후에는 error 리스너를 반드시 해제 — 남아 있으면 이후 첫 오류(시그널링 일시 끊김 'network',
+    // 재연결 중 'peer-unavailable')에 peer가 destroy되어 방·게스트 연결이 통째로 죽는다
+    const onOpen = () => { clearTimeout(timer); peer.off('error', onErr); resolve(peer); };
+    const onErr = e => { clearTimeout(timer); peer.off('open', onOpen); peer.destroy(); reject(e); };
+    const timer = setTimeout(() => {
+      peer.off('open', onOpen); peer.off('error', onErr); peer.destroy();
+      reject(Object.assign(new Error('peer open timeout'), { type: 'timeout' }));
+    }, T.peerOpen);
+    peer.once('open', onOpen);
+    peer.once('error', onErr);
   });
 }
 
 function openConn(peer, targetId) {
   return new Promise((resolve, reject) => {
     const conn = peer.connect(targetId, { reliable: true, serialization: 'json' });
+    // peer가 disconnected/destroyed면 PeerJS가 undefined를 반환한다
+    if (!conn) return reject(Object.assign(new Error('peer disconnected'), { type: 'disconnected' }));
     const cleanup = () => { clearTimeout(timer); peer.off('error', onPeerErr); };
     const timer = setTimeout(() => { cleanup(); conn.close(); reject(Object.assign(new Error('conn timeout'), { type: 'timeout' })); }, T.connOpen);
     // 대상 peer가 없으면 DataConnection이 아니라 Peer에 'peer-unavailable' 오류가 온다
@@ -89,6 +98,7 @@ class P2PSocket {
     this.pending = new Map();  // 게스트: ack 대기 { ev, p, ack } — 끊기면 재연결 후 재전송
     this.queue = [];           // 연결·복구 중 보낸 이벤트 (socket.io 버퍼링과 동일)
     this.seq = 0;
+    this._reconnecting = false;
     this.epoch = (this.epoch ?? 0) + 1; // leave 이후 늦게 끝난 비동기 작업 무시용
   }
 
@@ -184,9 +194,18 @@ class P2PSocket {
       });
       conn.on('error', e => console.warn('[p2p] guest conn error', conn.peer, e));
     });
-    // 시그널링 서버 연결만 끊긴 경우 — 기존 게스트 연결은 유지, 신규 참가를 위해 재등록
-    peer.on('disconnected', () => { if (this.peer === peer && !peer.destroyed) peer.reconnect(); });
+    this._watchSignaling(peer);
     peer.on('error', e => console.warn('[p2p] host peer error', e.type));
+  }
+
+  // 시그널링 서버 연결만 끊긴 경우 재등록 — 지수 백오프(즉시 재시도 반복 방지). 데이터 연결은 유지된다
+  _watchSignaling(peer) {
+    let n = 0;
+    peer.on('open', () => { n = 0; });
+    peer.on('disconnected', () => {
+      const d = Math.min(30_000, 1000 * 2 ** n++);
+      setTimeout(() => { if (this.peer === peer && !peer.destroyed && peer.disconnected) peer.reconnect(); }, d);
+    });
   }
 
   _hostSend(pid, ev, p) {
@@ -201,6 +220,8 @@ class P2PSocket {
       return;
     }
     if (!msg || msg.t !== 'req' || typeof msg.ev !== 'string') return;
+    // room:create는 방장 로컬 전용 — 게스트가 보내면 방을 덮어쓰고 방장 권한을 가져갈 수 있다
+    if (msg.ev === 'room:create') return;
     this.conns.set(conn.peer, conn);
     const reply = msg.id != null ? r => { if (conn.open) conn.send({ t: 'ack', id: msg.id, r }); } : undefined;
     this.host.handle(conn.peer, msg.ev, msg.p, reply);
@@ -217,7 +238,7 @@ class P2PSocket {
         const peer = await openPeer(PEER_PREFIX + s.roomId);
         if (epoch !== this.epoch) { peer.destroy(); return; }
         this._becomeHost(peer);
-        this.host.restore(snap, peer.id);
+        if (!this.host.restore(snap, peer.id)) return this._lost('HOST_STATE_INVALID');
         this._local('connect');
         this._flush();
         return;
@@ -246,7 +267,8 @@ class P2PSocket {
     if (epoch !== this.epoch) return peer.destroy();
     this.peer = peer;
     this.id = peer.id;
-    peer.on('disconnected', () => { if (this.peer === peer && !peer.destroyed) peer.reconnect(); });
+    this._watchSignaling(peer);
+    peer.on('error', e => { if (e.type !== 'peer-unavailable') console.warn('[p2p] guest peer error', e.type); });
 
     let conn;
     try { conn = await openConn(peer, PEER_PREFIX + code); } catch (e) {
@@ -259,6 +281,7 @@ class P2PSocket {
       if (epoch !== this.epoch) return;
       if (!res?.ok) { this.leave(); return ack?.(res ?? { ok: false, error: 'JOIN_FAILED' }); }
       ss.set(SESSION_KEY, { mode: 'guest', roomId: code, playerName });
+      this.connected = true;
       this._local('connect');
       this._flush();
       ack?.(res);
@@ -266,8 +289,8 @@ class P2PSocket {
   }
 
   _attachGuestConn(conn, code, playerName) {
+    // connected는 room:join 승인 후에 세운다 — 그 전 화면 이벤트는 큐로 가서 끊긴 동안의 이벤트 뒤에 순서대로 전송
     this.conn = conn;
-    this.connected = true;
     conn.on('data', msg => {
       if (!msg || typeof msg !== 'object') return;
       if (msg.t === 'ev' && typeof msg.ev === 'string') this._deliver(msg.ev, msg.p);
@@ -280,7 +303,11 @@ class P2PSocket {
       closed = true;
       this.connected = false;
       // 응답 못 받은 요청은 재연결 후 다시 보낸다 (방장 새로고침 중 room:get 실패로 홈으로 튕기지 않게)
-      for (const { ev, p, ack } of this.pending.values()) this.queue.push([ev, p, ack]);
+      for (const { ev, p, ack } of this.pending.values()) {
+        // room:join은 재전송하면 _startGuest(leave 포함)가 다시 돌므로 실패로 돌려준다 — 재연결 루프가 재시도
+        if (ev === 'room:join') ack({ ok: false, error: 'DISCONNECTED' });
+        else this.queue.push([ev, p, ack]);
+      }
       this.pending.clear();
       try { conn.close(); } catch { /* noop */ }
       this._reconnectGuest(code, playerName);
@@ -289,23 +316,30 @@ class P2PSocket {
   }
 
   async _reconnectGuest(code, playerName) {
+    if (this._reconnecting) return; // 재연결 중 다시 끊겨도 루프를 겹쳐 돌리지 않는다
+    this._reconnecting = true;
     const epoch = this.epoch;
-    const until = Date.now() + T.reconnectWindow;
-    while (Date.now() < until) {
-      await sleep(T.retryGap);
-      if (epoch !== this.epoch) return;
-      try {
-        if (this.peer.disconnected && !this.peer.destroyed) this.peer.reconnect();
-        const conn = await openConn(this.peer, PEER_PREFIX + code);
-        if (epoch !== this.epoch) return conn.close();
-        this._attachGuestConn(conn, code, playerName);
-        const res = await new Promise(r => this._send('room:join', { roomId: code, playerName }, r));
+    try {
+      const until = Date.now() + T.reconnectWindow;
+      while (Date.now() < until) {
+        await sleep(T.retryGap);
         if (epoch !== this.epoch) return;
-        if (res?.ok) { this._local('connect'); this._flush(); return; }
-        return this._lost(res?.error ?? 'JOIN_FAILED'); // 방은 있으나 복귀 거부(진행 중 신규 등)
-      } catch { /* 방장 새로고침 중일 수 있음 — 재시도 */ }
+        try {
+          if (this.peer.disconnected && !this.peer.destroyed) this.peer.reconnect();
+          const conn = await openConn(this.peer, PEER_PREFIX + code);
+          if (epoch !== this.epoch) return conn.close();
+          this._attachGuestConn(conn, code, playerName);
+          const res = await new Promise(r => this._send('room:join', { roomId: code, playerName }, r));
+          if (epoch !== this.epoch) return;
+          if (res?.error === 'DISCONNECTED' || res?.error === 'SEND_FAILED') continue; // join 중 다시 끊김 — 재시도
+          if (res?.ok) { this.connected = true; this._local('connect'); this._flush(); return; }
+          return this._lost(res?.error ?? 'JOIN_FAILED'); // 방은 있으나 복귀 거부(진행 중 신규 등)
+        } catch { /* 방장 새로고침 중일 수 있음 — 재시도 */ }
+      }
+      if (epoch === this.epoch) this._lost('HOST_LOST');
+    } finally {
+      if (epoch === this.epoch) this._reconnecting = false;
     }
-    this._lost('HOST_LOST');
   }
 
   // ── 공통 ─────────────────────────────────

@@ -57,6 +57,7 @@ const closeModal = p => p.locator('.modal-overlay').first().click({ position: { 
 const ok = g => g.caseId === 'S1E01' && g.tiles === 10 && g.scene > 0;
 
 async function scenario(name, fn) {
+  if (process.env.ONLY && !name.includes(process.env.ONLY)) return; // 일부 시나리오만: ONLY=<이름 일부>
   const t0 = Date.now();
   try {
     const detail = await fn();
@@ -183,6 +184,29 @@ try {
     try { await A.waitForURL(/\/result\//, { timeout: 15_000 }); await B.waitForURL(/\/result\//, { timeout: 15_000 }); } catch { resulted = false; }
     await A.context().close(); await B.context().close();
     return { pass: ok(gA) && gA.ev === 'EVIDENCE 1/10' && synced && resulted, rehostMs, gA, synced, resulted };
+  });
+
+  await scenario('방장 5초 이탈 후 같은 탭으로 복귀 → 게스트 재연결 (peer-unavailable 반복에도 생존)', async () => {
+    const A = await newPlayer(browser, '방장4'), B = await newPlayer(browser, '손님4');
+    const code = await createRoom(A);
+    await joinRoom(B, code); await B.waitForURL(/\/lobby\//, { timeout: 20_000 });
+    await A.getByText('[ 수사 팀 — 2/8 ]').waitFor({ timeout: 10_000 });
+    await A.getByText('▶ 수사 개시').click();
+    await B.waitForURL(/\/game\//, { timeout: 10_000 }); await sleep(1500);
+    const gameUrl = A.url();
+    await A.goto('about:blank');
+    await sleep(5000); // 게스트는 이 동안 재연결 시도마다 peer-unavailable
+    await A.goto(gameUrl); // 같은 탭 sessionStorage로 재호스팅
+    await A.locator('.case-id').waitFor({ timeout: 30_000 });
+    let synced = false;
+    for (let i = 0; i < 20 && !synced; i++) {
+      await A.locator('button[style*="aspect-ratio"]').nth(3).click().catch(() => {}); await closeModal(A);
+      await sleep(1000);
+      synced = (await gameState(B)).ev === 'EVIDENCE 1/10';
+    }
+    const onGame = new URL(B.url()).pathname.includes('/game/');
+    await A.context().close(); await B.context().close();
+    return { pass: synced && onGame, synced, onGame };
   });
 
   await scenario('방장 이탈(페이지 떠남) → 게스트 재연결 시도 후 안내와 함께 홈', async () => {

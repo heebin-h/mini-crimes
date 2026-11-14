@@ -127,6 +127,7 @@ export default function GamePage() {
     navigate(`/result/${roomId}`, {
       state: {
         ...data,
+        myId: socket.id, // 결과 화면 새로고침 시 socket.id가 사라져도 내 점수 표시
         revealedClues: revealedCluesRef.current,
         warningUsed: warningUsedRef.current,
         totalClues: caseRef?.clueCards?.length ?? 10,
@@ -198,8 +199,14 @@ export default function GamePage() {
     }
   }
 
+  // 포인터는 50ms 쓰로틀 — mousemove마다 보내면 방장 쪽 빈도 제한·대역폭 낭비
+  const lastPointerAt = useRef(0);
   function handlePointerMove({ x, y }) {
-    if (!isSolo) socket.emit('pointer:move', { x, y });
+    if (isSolo) return;
+    const t = performance.now();
+    if (t - lastPointerAt.current < 50) return;
+    lastPointerAt.current = t;
+    socket.emit('pointer:move', { x, y });
   }
 
   function handlePointerLeave() {

@@ -173,3 +173,26 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 
 **검증**: 단위 17 PASS(선택지·정답 불변식, 이미지), lint, 빌드, 데이터 변경 전후 정답 동일.
 **미검증**: 실제 플레이어 기준 해결 가능성(외부 플레이테스트 필요).
+
+## 2026-11-14 — P2P 전환 독립 리뷰 반영 (`feat/static-p2p`)
+
+**리뷰 판정**: 조건부 (높음 2·중간 3·낮음 8). 높음·중간과 비용 낮은 낮음 항목 반영.
+
+| 심각도 | 문제 | 수정 | 근거·검증 |
+|---|---|---|---|
+| 높음 | `openPeer`의 `once('error')`가 open 후에도 남음 → 시그널링 일시 끊김(`network`)이나 재연결 중 `peer-unavailable` 한 번에 peer destroy → 방장 방 소멸, 방장 새로고침이 1.5초를 넘기면 게스트 재연결 실패 | open/error/timeout 리스너 상호 해제 | 신규 E2E "방장 5초 이탈 후 복귀": 수정 전 FAIL, 수정 후 PASS |
+| 높음 | 게스트가 `room:create`를 보내 방을 덮어쓰고 방장 권한 탈취 가능 | 방장이 게스트의 `room:create`를 버림 + `hostRoom`은 방이 있으면 `ROOM_EXISTS` | 단위 테스트 |
+| 중간 | `disconnected` 즉시 재등록 반복(백오프 없음) | 지수 백오프(1초→최대 30초) | 코드 |
+| 중간 | 쓰로틀 없는 `pointer:move`가 공용 빈도 버킷을 소진 → 노트·제출 유실 | 클라 50ms 쓰로틀 + 포인터 전용 버킷 | 단위 테스트 |
+| 중간 | 재연결 시 join 승인 전 `connected=true` → 끊긴 동안 쌓인 오래된 이벤트가 최신 값 덮음 | join 승인 후 `connected` 설정·큐 flush | E2E 재연결 시나리오 |
+| 낮음 | 재연결 루프 중복, `peer.connect()` undefined, 참가 중 끊김 시 '연결 중' 고착, 결과 새로고침 시 내 점수 미표시, 로비 이탈자 자리 미반환, 스냅샷 무검증, README 문구 | 각각 수정(재진입 플래그, null 검사, `host:lost` 처리, navigate state `myId`, 유예 만료 시 로비 제거, 형식 검증, README 정정·한계 추가) | 단위 4건 추가 |
+
+**자체 발견**
+- 재연결 중 끊기면 대기 중인 `room:join`이 재전송 큐로 들어갔다. 그러면 flush 때 `_startGuest`가 다시 실행되고, 그 안의 `leave()`가 세션을 지운다. → `room:join`은 큐로 옮기지 않고 `DISCONNECTED`로 실패 처리한다.
+- 리뷰 반영 중 `ResultPage`가 `window.location.state`를 참조하던 오류 → `useLocation()`의 `state`로 수정.
+
+**미반영 (기록)**
+- 공개 이후 재연결로 `answer:submit`이 다시 가서 NOT_PLAYING 토스트가 뜨는 경우: 결과 화면으로 넘어간 뒤라 실제로 보이지 않음.
+- 이름·id 사칭: 인증이 없는 구조상 한계. README에 명시.
+
+**검증**: 단위 21 PASS(+4), E2E 9/9 PASS(+1), lint 신규 경고 없음

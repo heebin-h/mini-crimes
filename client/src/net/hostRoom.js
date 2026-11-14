@@ -101,6 +101,7 @@ export function createHostRoom(deps) {
   // ── 이벤트 핸들러 ─────────────────────────────
   const handlers = {
     'room:create'(from, { roomId, caseId, playerName }, ack) {
+      if (room) return ack?.({ ok: false, error: 'ROOM_EXISTS' }); // 기존 방 덮어쓰기(방장 권한 탈취) 방지
       if (!deps.getCase(caseId)) return ack?.({ ok: false, error: 'CASE_NOT_FOUND' });
       room = {
         roomId, caseId, hostId: from, phase: 'lobby',
@@ -223,7 +224,8 @@ export function createHostRoom(deps) {
     const reply = typeof ack === 'function' ? ack : undefined;
     const fn = Object.hasOwn(handlers, ev) ? handlers[ev] : null;
     if (!fn) return reply?.({ ok: false, error: 'UNKNOWN_EVENT' });
-    if (!allowed(from)) return reply?.({ ok: false, error: 'RATE_LIMITED' });
+    // 포인터는 별도 버킷 — 마우스 이동이 노트·단서·제출 이벤트의 한도를 소진하지 않게
+    if (!allowed(ev.startsWith('pointer:') ? `${from}#ptr` : from)) return reply?.({ ok: false, error: 'RATE_LIMITED' });
     if (!OPEN_EVENTS.has(ev) && !member(from)) return reply?.({ ok: false, error: 'NOT_IN_ROOM' });
     const data = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : {};
     try {
@@ -242,6 +244,7 @@ export function createHostRoom(deps) {
 
   function peerDisconnected(peerId) {
     buckets.delete(peerId);
+    buckets.delete(`${peerId}#ptr`);
     const p = member(peerId);
     if (!p || !p.connected) return;
     p.connected = false;
@@ -254,6 +257,13 @@ export function createHostRoom(deps) {
       const q = member(peerId);
       if (q && !q.connected) {
         delete q.graceUntil;
+        // 로비에서 나간 사람은 자리 반환 (그대로 두면 정원이 차 신규 참가가 막힘). 진행 중엔 결과 표시를 위해 유지
+        if (room.phase === 'lobby' && room.hostId !== peerId) {
+          room.players = room.players.filter(p => p.id !== peerId);
+          delete room.playerAnswers[peerId];
+          pushState();
+          return;
+        }
         changed();
         // 유예 만료로 남은 인원이 모두 제출한 상태가 됐으면 공개
         if (room?.phase === 'playing' && allSubmitted()) reveal();
@@ -268,7 +278,9 @@ export function createHostRoom(deps) {
 
   /** 저장된 방 상태로 복구. 방장 본인(newHostId)은 연결, 나머지는 끊김+유예로 표시. */
   function restore(saved, newHostId) {
-    if (!saved?.roomId) return false;
+    // sessionStorage는 같은 origin의 다른 페이지도 쓸 수 있으므로 최소 형식 검증
+    if (!saved || typeof saved.roomId !== 'string' || !Array.isArray(saved.players) || !deps.getCase(saved.caseId)
+      || !['lobby', 'playing', 'revealed'].includes(saved.phase) || typeof saved.playerAnswers !== 'object' || !Array.isArray(saved.revealedClues)) return false;
     room = saved;
     const oldHost = room.hostId;
     const hostPlayer = member(oldHost);

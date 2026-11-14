@@ -166,3 +166,42 @@ test('방장 새로고침 복구: snapshot → restore', async () => {
   assert.equal((await s2.call('g1', 'room:join', { roomId: 'ABC123', playerName: '게스트1' })).ok, true);
   assert.equal(s2.h.getRoom().players.find(p => p.id === 'g1').connected, true);
 });
+
+test('기존 방이 있으면 room:create 거부 (방장 권한 탈취 방지)', async () => {
+  const s = await lobbyWith(1);
+  assert.deepEqual(await s.call('g1', 'room:create', { roomId: 'HIJACK', caseId: 's1e02', playerName: 'x' }), { ok: false, error: 'ROOM_EXISTS' });
+  const r = s.h.getRoom();
+  assert.equal(r.roomId, 'ABC123');
+  assert.equal(r.hostId, HOST);
+  assert.equal(r.players.length, 2);
+});
+
+test('포인터 이벤트는 별도 버킷 — 소진돼도 다른 이벤트는 처리', async () => {
+  const s = await lobbyWith(1);
+  s.h.handle(HOST, 'game:start');
+  for (let i = 0; i < LIMITS.rate.capacity * 3; i++) s.h.handle('g1', 'pointer:move', { x: 0.5, y: 0.5 });
+  assert.deepEqual(await s.call('g1', 'answer:submit', { answers: CORRECT }), { ok: true });
+  s.h.handle('g1', 'note:update', { text: '노트' });
+  assert.equal(s.h.getRoom().sharedNote, '노트');
+});
+
+test('로비에서 유예 만료 시 자리 반환, 진행 중에는 유지', async () => {
+  const s = await lobbyWith(1);
+  s.h.peerDisconnected('g1');
+  assert.equal(s.h.getRoom().players.length, 2, '유예 중엔 유지');
+  s.advance(LIMITS.graceMs + 1);
+  assert.equal(s.h.getRoom().players.length, 1);
+  const s2 = await lobbyWith(1);
+  s2.h.handle(HOST, 'game:start');
+  s2.h.peerDisconnected('g1');
+  s2.advance(LIMITS.graceMs + 1);
+  assert.equal(s2.h.getRoom().players.length, 2);
+});
+
+test('잘못된 스냅샷은 복구 거부', () => {
+  const s = setup();
+  for (const bad of [null, {}, { roomId: 'R' }, { roomId: 'R', caseId: 'nope', phase: 'lobby', players: [], playerAnswers: {}, revealedClues: [] },
+    { roomId: 'R', caseId: 's1e01', phase: 'weird', players: [], playerAnswers: {}, revealedClues: [] }]) {
+    assert.equal(s.h.restore(bad, HOST), false, JSON.stringify(bad));
+  }
+});

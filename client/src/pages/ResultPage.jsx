@@ -6,7 +6,7 @@ export default function ResultPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const isSolo = roomId === 'solo';
-  const myId = socket.id;
+  const myId = state?.myId ?? socket.id;
 
   if (!state) {
     return (
