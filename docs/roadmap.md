@@ -45,7 +45,7 @@
 - [x] **H-3 heartbeat** — 방장·게스트 침묵 단절(bye·close 없음) 감지 (S-5 "방장 기기 네트워크 단절 감지" 항목 대체: 5초 ping·15초 침묵 시 처리)
   - [x] 단위 테스트(백그라운드 탭 타이머 정지 오탐 방지 포함), E2E 9/9 회귀 통과(26초 시나리오에서 오탐 없음)
   - [ ] 실제 침묵 단절(전원 차단·Wi-Fi 끊김) 감지 시간 실측 — Playwright offline 에뮬레이션이 WebRTC 데이터 채널에 먹는지 미확인이라 시도하지 않음. 실기기에서 확인 필요
-- [ ] **H-4 구버전 P0~P3 정리** — S 단계로 대체된 서버 전제 항목 표시, P3 잔여 정리
+- [x] **H-4 구버전 P0~P3 정리** — S 단계로 대체된 서버 전제 항목에 대체 근거를 표시, P3 잔여 정리(빈 디렉터리 삭제)
 
 ## P0 — 멀티(팀 수사) 진행 불가 버그
 
@@ -59,12 +59,13 @@
   - [x] 리뷰 반영(머지 전): 서버 `game:start` lobby 단계만 허용, Lobby `revealed` 수신 시 홈, 동기화 실패 시 즉시 홈
   - [x] 로컬 E2E (playwright 2컨텍스트) 통과 — 제출→결과→뒤로가기 포함
   - [ ] 배포 환경 실기 확인 (배포 여부 자체 미확인)
-- [ ] **P0-2 새로고침·재연결 시 방 복귀** — GamePage/LobbyPage에서 `connect()` + `connect` 시 `room:join` 재전송 후 `room:get`
-  - [ ] 이름 중복 플레이어 재연결 오매칭 위험 검토 (`server/rooms.js` 이름 기반 매칭)
-  - [ ] 방 이동 시 서버 `currentRoomId`·socket.io room 해제 (이전 방 `game:revealed`·`note:synced` 등이 다른 화면에 도착 가능, 현재 `room:state`만 roomId 필터)
+- [x] **P0-2 새로고침·재연결 시 방 복귀** — **S-5로 대체**(`socket.connect(roomId)` 세션 복구 + `room:join` 재전송 + `room:get`)
+  - [x] 이름 중복 플레이어 재연결 오매칭 위험 → **H-2 참가 토큰**으로 해소
+  - [x] 방 이동 시 서버 `currentRoomId`·socket.io room 해제 → 서버 삭제(S-8)로 소멸, P2P는 방 이동 시 `leave()`로 연결·세션 정리
   - 현재 동작(P0-1 임시 처리): 새로고침 시 GamePage는 소켓 미연결로 `room:get` timeout(5s) → 홈, LobbyPage는 새 소켓이라 `ROOM_NOT_FOUND` → 즉시 홈
-- [ ] **P0-3 회귀 방지 E2E 레포 편입** — 2인 흐름 + 이전 방 거부 + 늦은 로비 진입 + 노트 복원 + 솔로
-  - [ ] playwright devDependency 추가 여부 결정
+- [x] **P0-3 회귀 방지 E2E 레포 편입** — **S-7로 대체**(`client/e2e/p2p.e2e.mjs` 9시나리오: 2인 흐름·노트 복원(게스트 새로고침)·솔로 등)
+  - [x] playwright devDependency 추가 여부 → 추가하지 않음. `PLAYWRIGHT_MODULE` 환경변수로 외부 설치 경로를 지정(공용 PeerJS 네트워크가 필요해 CI에는 넣지 않음)
+  - [ ] '늦은 로비 진입' 전용 E2E 시나리오는 없음(단위 테스트의 phase 검증으로만 커버)
 
 - [x] **P0-4 서버 권위·데이터 안전 (리뷰 높음 3건)** (`fix/server-authority-data-safety`) — 근거 `docs/review/game-dev-checklist-review_2026-11-14.md`
   - [x] `answer:submit`·`game:reveal`은 `playing`에서만 (로비 제출 시 정답 전원 공개 차단)
@@ -74,32 +75,34 @@
   - [x] 회원·기록 JSON: 손상 시 덮어쓰기 거부(500), 원자적 쓰기(tmp→rename), 디렉터리 자동 생성
   - [x] `DATA_DIR` 환경변수 (영속 디스크 지정용)
   - [ ] 배포 환경 영속 디스크/DB 결정 (휘발성 디스크면 재배포마다 계정 소실)
-- [ ] **P0-2 확장 (리뷰)** — `connectionStateRecovery` 적용 + 복구 실패 시 앱 재동기화, 끊김 퇴장 판정 유예(전원 제출 판정에서 잠깐 끊긴 사람 제외 방지)
-- [ ] **P0-3 확장 (리뷰)** — 서버 권위·네트워크(지연·끊김)·데이터 손상 테스트 추가, CI에 lint·E2E
+- [x] **P0-2 확장 (리뷰)** — `connectionStateRecovery`는 socket.io 전제라 소멸. 끊김 퇴장 판정 유예 20초는 S-5(`hostRoom` `graceMs`), 침묵 단절 감지는 H-3
+- [x] **P0-3 확장 (리뷰)** — 서버 권위 → `hostRoom` 단위 테스트, 데이터 손상 → 프로필 저장소 테스트, CI에 lint·test 추가(S-7)
+  - [ ] CI에 E2E는 미포함(공용 PeerJS 서버 의존으로 CI 불안정 우려, 로컬 `npm run e2e`로만 실행)
 
 ## P1 — 추리 성립·배포
 
-- [ ] **P1-3 입력 검증·빈도 제한 (리뷰 중간)** — `room:create` caseId 검증(`caseExists` 미사용), 이름·노트 길이 상한, `maxHttpBufferSize`, `clue:reveal` id 검증, 로그인·가입·소켓 이벤트 rate limit
-- [ ] **P1-4 모바일 (리뷰 중간)** — 지원 여부 결정. 현재 iPhone 13에서 플레이 불가(현장 폭 100px, 단서 카드 겹침)
+- [x] **P1-3 입력 검증·빈도 제한 (리뷰 중간)** — **S-4로 대체**(서버 전제 항목 중 로그인·가입·`maxHttpBufferSize`는 서버 삭제로 소멸) — `room:create` caseId 검증(`caseExists` 미사용), 이름·노트 길이 상한, `maxHttpBufferSize`, `clue:reveal` id 검증, 로그인·가입·소켓 이벤트 rate limit
+- [x] **P1-4 모바일 (리뷰 중간)** — **S-6로 완료** — 지원 여부 결정. 현재 iPhone 13에서 플레이 불가(현장 폭 100px, 단서 카드 겹침)
 - [ ] **P1-5 추론 경로표 + 외부 플레이테스트 (리뷰 중간)** — 케이스별 결론 3개 × 근거 단서 2개 이상, 용의자별 배제 단서 (P1-1과 함께)
 
-- [ ] **P1-1 SP01~SP03 단서 보강 6건** (README `알려진 미결 이슈`) — 기존 단서 텍스트 보강 권장(이미지 1:1 구조)
+- [x] **P1-1 SP01~SP03 단서 보강 6건** — **S-9로 완료** (README `알려진 미결 이슈`) — 기존 단서 텍스트 보강 권장(이미지 1:1 구조)
 - [x] **P1-2 서브경로 배포 이미지 404** — `assetUrl()` + BASE_URL (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
   - [ ] GitHub Pages 실배포 확인
 - [x] 이미지 WebP 전환 5.8MB → 4.2MB (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
 
 ## P2 — 문서 정합성 (게임 영향 없음)
 
-- [ ] SCENARIO_PLAN·시나리오 §9 V3 "자유 입력+키워드" 전제 → 4지선다 text 비교로 수정
-- [ ] sp01 약물명 오타(문서 "미도라졸람") 수정, `db.js:482` "강효" 오타 확인
-- [ ] sp02 동기·s1e04 사건 유형 서술 통일, "119"·원/유로·이름 중복 정리
+- [x] SCENARIO_PLAN·시나리오 §9 V3 "자유 입력+키워드" 전제 → 4지선다 text 비교로 수정 (S-9)
+- [x] sp01 약물명 오타(문서 "미도라졸람") 수정, "강효" 오타 확인 (S-9)
+- [x] sp02 동기·s1e04 사건 유형 서술 통일, "119"·원/유로 정리 (S-9)
+  - [ ] 이름 중복(루카·미켈레·알베르토)은 채점 데이터 연쇄 수정 위험으로 유지 결정 — README 기록
 - [x] 문서 이미지 파일명 .jpg → .webp (PR #2 `chore/webp-images-base-url`, main 머지 c09f1e2)
 
 ## P3 — 정리
 
-- [ ] 헬스체크(`/health`)·SIGTERM 종료 처리·에러 수집 (리뷰 낮음)
-- [ ] 소켓 인증 정책 결정 — 현재 토큰 없이 방 생성·참가 가능 (리뷰 낮음)
+- [x] 헬스체크(`/health`)·SIGTERM 종료 처리·에러 수집 (리뷰 낮음) — 서버 삭제(S-8)로 소멸
+- [x] 소켓 인증 정책 결정 — 계정 없음(로컬 프로필) + 참가 비밀 토큰(H-2)으로 결정
 
-- [ ] 빈 디렉터리 `client/public/cases/s1e01 s1e02 … sp03` 삭제
-- [ ] README의 존재하지 않는 `client/src/data/` 수정
-- [ ] `JWT_SECRET` 기본값 하드코딩(`server/index.js`) — 프로덕션 미설정 시 기동 거부 검토
+- [x] 빈 디렉터리 `client/public/cases/s1e01 s1e02 … sp03` 삭제 (H-4, git 미추적이라 커밋 diff에는 없음)
+- [x] README의 존재하지 않는 `client/src/data/` 수정 — 현재 `client/src/data/`가 실재하며 README 구조도와 일치(S-1·S-8)
+- [x] `JWT_SECRET` 기본값 하드코딩(`server/index.js`) — 서버·JWT 삭제(S-2·S-8)로 소멸

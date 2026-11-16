@@ -233,3 +233,12 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - `socket.js`: 게스트는 방장 연결에 ping 송신 + 침묵 감시(timeout → 기존 `onClosed` 재연결 루프), 방장은 게스트별 침묵 감시(timeout → `conn.close()` + `peerDisconnected` → 20초 유예)와 ping에 pong 응답. `leave()`에서 전부 정지.
 
 **검증**: 단위 31 PASS(+5), 빌드 성공, E2E(실제 PeerJS) 9/9 PASS — 가장 긴 시나리오(26초)에서도 오탐 없음. **미검증**: 실제 침묵 단절 시 감지까지 걸리는 시간(Playwright offline이 WebRTC에 적용되는지 미확인).
+
+## 2026-11-17 — H-4 구버전 P0~P3 로드맵 정리 (`fix/p2p-hardening`)
+
+**원인**: 서버 구조 시절의 P0~P3 체크박스가 S 단계(정적·P2P 전환)로 대체됐는데 미체크 그대로 남아, 로드맵상 "미해결"이 실제 상태와 어긋나 있었다.
+
+**변경(`docs/roadmap.md`)**: 항목별로 대체 근거를 명시해 체크 — P0-2→S-5·H-2, P0-3→S-7, P1-1→S-9, P1-3→S-4, P1-4→S-6, P2→S-9, P3(헬스체크·JWT_SECRET·소켓 인증)→서버 삭제(S-8)·H-2로 소멸. 체크하지 않고 남긴 것: P1-5 외부 플레이테스트, CI E2E 미포함, '늦은 로비 진입' 전용 E2E 없음, 이름 중복 유지 결정.
+**파일 정리**: 빈 디렉터리 `client/public/cases/s1e01 s1e02 … sp03`(이름에 공백, git 미추적)을 `rmdir`로 삭제. 로드맵의 "README `client/src/data/` 수정" 항목은 현재 디렉터리가 실재하고 README 구조도와 일치하므로 해결로 표시.
+**근거 확인**: "데이터 손상 테스트"는 `client/test/data-grading-profile.test.js`의 '손상된 저장값은 백업 후 기본값'으로 확인.
+**검증**: 문서·빈 디렉터리 변경만 — 코드 변경 없음.
