@@ -43,6 +43,12 @@ function peerOptions() {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// 참가 비밀 토큰(128bit). 세션에만 저장하고 room:state 등으로는 절대 내보내지 않는다
+const genToken = () => {
+  const b = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(b);
+  return Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+};
 const genCode = () => Array.from({ length: CODE_LEN }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 
 const ss = {
@@ -101,6 +107,7 @@ class P2PSocket {
     this.pending = new Map();  // 게스트: ack 대기 { ev, p, ack } — 끊기면 재연결 후 재전송
     this.queue = [];           // 연결·복구 중 보낸 이벤트 (socket.io 버퍼링과 동일)
     this.seq = 0;
+    this.token = null;         // 게스트: 참가 비밀 토큰
     this._reconnecting = false;
     this.epoch = (this.epoch ?? 0) + 1; // leave 이후 늦게 끝난 비동기 작업 무시용
   }
@@ -255,10 +262,11 @@ class P2PSocket {
   }
 
   // ── 게스트 ─────────────────────────────────
-  async _startGuest({ roomId, playerName }, ack, isRestore) {
+  async _startGuest({ roomId, playerName, token }, ack, isRestore) {
     if (!isRestore) this.leave();
     const code = String(roomId ?? '').trim().toUpperCase();
     this.mode = 'guest';
+    this.token = (isRestore && token) || genToken(); // 새로고침 복귀는 세션의 토큰을 이어 써야 같은 자리를 되찾는다
     const epoch = this.epoch;
     const fail = error => {
       if (epoch !== this.epoch) return;
@@ -280,10 +288,10 @@ class P2PSocket {
     if (epoch !== this.epoch) return conn.close();
     this._attachGuestConn(conn, code, playerName);
 
-    this._send('room:join', { roomId: code, playerName }, res => {
+    this._send('room:join', { roomId: code, playerName, token: this.token }, res => {
       if (epoch !== this.epoch) return;
       if (!res?.ok) { this.leave(); return ack?.(res ?? { ok: false, error: 'JOIN_FAILED' }); }
-      ss.set(SESSION_KEY, { mode: 'guest', roomId: code, playerName });
+      ss.set(SESSION_KEY, { mode: 'guest', roomId: code, playerName, token: this.token });
       this.connected = true;
       this._local('connect');
       this._flush();
@@ -332,7 +340,7 @@ class P2PSocket {
           const conn = await openConn(this.peer, PEER_PREFIX + code);
           if (epoch !== this.epoch) return conn.close();
           this._attachGuestConn(conn, code, playerName);
-          const res = await new Promise(r => this._send('room:join', { roomId: code, playerName }, r));
+          const res = await new Promise(r => this._send('room:join', { roomId: code, playerName, token: this.token }, r));
           if (epoch !== this.epoch) return;
           if (res?.error === 'DISCONNECTED' || res?.error === 'SEND_FAILED') continue; // join 중 다시 끊김 — 재시도
           if (res?.ok) { this.connected = true; this._local('connect'); this._flush(); return; }
@@ -352,7 +360,7 @@ class P2PSocket {
     const s = ss.get(SESSION_KEY);
     if (!s?.roomId || (roomIdHint && s.roomId !== roomIdHint)) return;
     if (s.mode === 'host') this._rehost(s);
-    else this._startGuest({ roomId: s.roomId, playerName: s.playerName }, null, true);
+    else this._startGuest({ roomId: s.roomId, playerName: s.playerName, token: s.token }, null, true);
   }
 
   _lost(reason) {

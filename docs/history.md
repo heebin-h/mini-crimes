@@ -210,3 +210,16 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - README 한계 문구 정정(공용 TURN은 무료·무보증, 성공률 미실측) + 환경변수 표, `.env.example`.
 
 **검증**: 단위 24 PASS(+3). 실제 TURN 경유 연결은 미검증.
+
+## 2026-11-17 — H-2 참가 비밀 토큰 (`fix/p2p-hardening`)
+
+**근본 원인**: `hostRoom.js`의 재접속 매칭이 `!connected && name === name`뿐이었다(`room:join`). 이름은 로비·결과 화면에 노출되므로, 같은 방의 누구든 끊긴 플레이어 이름으로 접속해 그 자리·제출 답안·(방 상태상) 권한을 이어받을 수 있었다. 이전 README는 "구현하지 않음"으로 기록만 했다.
+
+**변경**
+- `hostRoom.js`: `room:join`에 `token` 필수(`TOKEN_RE` 16~64자 `[A-Za-z0-9_-]`, 없으면 `TOKEN_REQUIRED`). 플레이어에 token 저장, 재접속은 이름+토큰 모두 일치할 때만. `toClient`는 token을 직렬화하지 않아 방 상태·방송에 노출되지 않는다(스냅샷은 같은 기기 sessionStorage에만 저장).
+- `socket.js`: 참가 시 128bit 랜덤 토큰 생성(`crypto.getRandomValues`), 세션에 저장, 새로고침·재연결 때 같은 토큰 재사용, 모든 `room:join`에 첨부.
+- README(한계·이벤트 표) 정정.
+
+**한계(기록)**: 토큰은 탭 sessionStorage 기준이라 탭을 닫으면 같은 자리로 복귀할 수 없다. 방장 브라우저는 모든 토큰을 알며, 방장 자체의 위변조는 막지 못한다.
+
+**검증**: 단위 26 PASS(+2, 기존 join 테스트에 토큰 반영), lint 신규 경고 없음. E2E(실제 PeerJS)는 H 마지막에 일괄 실행.

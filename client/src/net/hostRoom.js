@@ -16,6 +16,7 @@ export const LIMITS = {
 };
 
 const QUESTION_IDS = ['suspect', 'weapon', 'motive'];
+export const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
 const str = (v, max) => (typeof v === 'string' ? v : '').trim().slice(0, max);
 
@@ -113,15 +114,17 @@ export function createHostRoom(deps) {
       changed();
     },
 
-    'room:join'(from, { roomId, playerName }, ack) {
+    'room:join'(from, { roomId, playerName, token }, ack) {
       if (!room || roomId !== room.roomId) return ack?.({ ok: false, error: 'ROOM_NOT_FOUND' });
       const name = str(playerName, LIMITS.nameLen) || '익명';
+      // 참가 비밀 토큰: 클라이언트가 참가 때 만든 랜덤 값. 이름만 아는 사람이 끊긴 자리를 가로채지 못하게 한다
+      if (typeof token !== 'string' || !TOKEN_RE.test(token)) return ack?.({ ok: false, error: 'TOKEN_REQUIRED' });
 
       const existing = member(from);
       if (existing) { existing.connected = true; cancelGrace(existing.id); ack?.({ ok: true }); return pushState(); }
 
-      // 재접속: 연결이 끊긴 같은 이름 플레이어 → 새 peer id로 교체 (방장 권한 포함)
-      const away = room.players.find(p => !p.connected && p.name === name);
+      // 재접속: 연결이 끊긴 같은 이름 + 같은 토큰의 플레이어 → 새 peer id로 교체
+      const away = room.players.find(p => !p.connected && p.name === name && p.token === token);
       if (away) {
         cancelGrace(away.id);
         const oldId = away.id;
@@ -138,7 +141,7 @@ export function createHostRoom(deps) {
       // 같은 이름이 접속 중이면 거부 — 이름 기반 재접속이 다른 사람과 섞이지 않게
       if (room.players.some(p => p.name === name)) return ack?.({ ok: false, error: 'NAME_TAKEN' });
 
-      room.players.push({ id: from, name, connected: true });
+      room.players.push({ id: from, name, connected: true, token });
       ack?.({ ok: true });
       pushState();
     },

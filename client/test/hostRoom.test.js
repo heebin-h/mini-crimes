@@ -6,6 +6,7 @@ import { getCase } from '../src/data/cases.js';
 import answers from '../src/data/answers.js';
 
 const HOST = 'host-peer';
+const tk = n => `tok-${n}`.padEnd(20, "0"); // 참가 비밀 토큰(16~64자 영숫자·_-)
 const CORRECT = { suspect: answers.s1e01.suspect.text, weapon: answers.s1e01.weapon.text, motive: answers.s1e01.motive.text };
 
 function setup() {
@@ -37,7 +38,7 @@ const flush = () => new Promise(r => setImmediate(r));
 async function lobbyWith(n = 1) {
   const s = setup();
   assert.deepEqual(await s.call(HOST, 'room:create', { roomId: 'ABC123', caseId: 's1e01', playerName: '호스트' }), { ok: true, roomId: 'ABC123' });
-  for (let i = 1; i <= n; i++) assert.equal((await s.call(`g${i}`, 'room:join', { roomId: 'ABC123', playerName: `게스트${i}` })).ok, true);
+  for (let i = 1; i <= n; i++) assert.equal((await s.call(`g${i}`, 'room:join', { roomId: 'ABC123', playerName: `게스트${i}`, token: tk(i) })).ok, true);
   return s;
 }
 
@@ -50,13 +51,13 @@ test('방 생성: 없는 케이스 거부, 이름 길이 제한', async () => {
 
 test('참가: 잘못된 방·이름 중복·정원·진행 중 신규 거부', async () => {
   const s = await lobbyWith(1);
-  assert.equal((await s.call('x', 'room:join', { roomId: 'WRONG', playerName: 'a' })).error, 'ROOM_NOT_FOUND');
-  assert.equal((await s.call('x', 'room:join', { roomId: 'ABC123', playerName: '게스트1' })).error, 'NAME_TAKEN');
-  for (let i = 2; i <= 7; i++) assert.equal((await s.call(`g${i}`, 'room:join', { roomId: 'ABC123', playerName: `p${i}` })).ok, true);
-  assert.equal((await s.call('g9', 'room:join', { roomId: 'ABC123', playerName: 'p9' })).error, 'ROOM_FULL');
+  assert.equal((await s.call('x', 'room:join', { roomId: 'WRONG', playerName: 'a', token: tk(99) })).error, 'ROOM_NOT_FOUND');
+  assert.equal((await s.call('x', 'room:join', { roomId: 'ABC123', playerName: '게스트1', token: tk(98) })).error, 'NAME_TAKEN');
+  for (let i = 2; i <= 7; i++) assert.equal((await s.call(`g${i}`, 'room:join', { roomId: 'ABC123', playerName: `p${i}`, token: tk(i + 10) })).ok, true);
+  assert.equal((await s.call('g9', 'room:join', { roomId: 'ABC123', playerName: 'p9', token: tk(19) })).error, 'ROOM_FULL');
   const s2 = await lobbyWith(1);
   s2.h.handle(HOST, 'game:start');
-  assert.equal((await s2.call('late', 'room:join', { roomId: 'ABC123', playerName: 'late' })).error, 'GAME_ALREADY_STARTED');
+  assert.equal((await s2.call('late', 'room:join', { roomId: 'ABC123', playerName: 'late', token: tk(77) })).error, 'GAME_ALREADY_STARTED');
 });
 
 test('방 인원이 아니면 이벤트 무시, room:get은 방 ID·인원 검증', async () => {
@@ -141,7 +142,7 @@ test('재접속: 같은 이름이면 새 id로 자리·답안 승계', async () 
   s.h.handle(HOST, 'game:start');
   await s.call('g1', 'answer:submit', { answers: CORRECT });
   s.h.peerDisconnected('g1');
-  assert.equal((await s.call('g1-new', 'room:join', { roomId: 'ABC123', playerName: '게스트1' })).ok, true);
+  assert.equal((await s.call('g1-new', 'room:join', { roomId: 'ABC123', playerName: '게스트1', token: tk(1) })).ok, true);
   const p = s.h.getRoom().players.find(x => x.name === '게스트1');
   assert.equal(p.id, 'g1-new');
   assert.equal(p.connected, true);
@@ -149,6 +150,31 @@ test('재접속: 같은 이름이면 새 id로 자리·답안 승계', async () 
   await flush();
   const [, , res] = s.got(HOST, 'game:revealed')[0];
   assert.ok(res.scores['g1-new'], '이전 답안이 새 id로 승계');
+});
+
+test('사칭 차단: 이름이 같아도 토큰이 다르면 끊긴 자리를 가로채지 못함', async () => {
+  const s = await lobbyWith(1);
+  s.h.handle(HOST, 'game:start');
+  await s.call('g1', 'answer:submit', { answers: CORRECT });
+  s.h.peerDisconnected('g1');
+  const evil = await s.call('evil', 'room:join', { roomId: 'ABC123', playerName: '게스트1', token: tk(666) });
+  assert.equal(evil.ok, false);
+  const p = s.h.getRoom().players.find(x => x.name === '게스트1');
+  assert.equal(p.id, 'g1', '자리는 그대로');
+  assert.equal(p.connected, false);
+  // 정당한 본인(같은 토큰)은 복귀
+  assert.equal((await s.call('g1-new', 'room:join', { roomId: 'ABC123', playerName: '게스트1', token: tk(1) })).ok, true);
+  assert.equal(s.h.getRoom().players.find(x => x.name === '게스트1').id, 'g1-new');
+});
+
+test('토큰 필수: 없음·형식 오류 거부, room:state에 토큰 비노출', async () => {
+  const s = await lobbyWith(1);
+  for (const bad of [undefined, '', 'short', 123, 'x'.repeat(65), 'has space 0123456789', { a: 1 }]) {
+    assert.equal((await s.call('n', 'room:join', { roomId: 'ABC123', playerName: 'new', token: bad })).error, 'TOKEN_REQUIRED', String(bad));
+  }
+  assert.equal(s.h.getRoom().players.length, 2);
+  assert.equal(JSON.stringify(s.h.getRoom()).includes(tk(1)), false, 'toClient는 토큰을 내보내지 않음');
+  assert.equal(JSON.stringify(s.sent).includes(tk(1)), false, '전송된 어떤 이벤트에도 토큰 없음');
 });
 
 test('방장 새로고침 복구: snapshot → restore', async () => {
@@ -163,7 +189,7 @@ test('방장 새로고침 복구: snapshot → restore', async () => {
   assert.deepEqual(r.revealedClues, ['c02']);
   assert.equal(r.players.find(p => p.id === HOST).connected, true);
   assert.equal(r.players.find(p => p.id === 'g1').connected, false);
-  assert.equal((await s2.call('g1', 'room:join', { roomId: 'ABC123', playerName: '게스트1' })).ok, true);
+  assert.equal((await s2.call('g1', 'room:join', { roomId: 'ABC123', playerName: '게스트1', token: tk(1) })).ok, true);
   assert.equal(s2.h.getRoom().players.find(p => p.id === 'g1').connected, true);
 });
 
