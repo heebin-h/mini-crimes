@@ -10,6 +10,7 @@
 
 import Peer from 'peerjs';
 import { createHostRoom } from './hostRoom.js';
+import { parseIceServers } from './ice.js';
 import { getCase } from '../data/cases.js';
 import { loadCaseAnswer } from '../game/grading.js';
 
@@ -30,6 +31,8 @@ const T = {
 // PeerJS 서버 설정 — 기본은 공용 서버. 자체 PeerServer를 쓰려면 VITE_PEER_HOST 등을 지정.
 function peerOptions() {
   const o = { debug: 1 };
+  const ice = parseIceServers(env.VITE_ICE_SERVERS);
+  if (ice) o.config = { iceServers: ice, sdpSemantics: 'unified-plan' };
   if (env.VITE_PEER_HOST) {
     o.host = env.VITE_PEER_HOST;
     if (env.VITE_PEER_PORT) o.port = Number(env.VITE_PEER_PORT);

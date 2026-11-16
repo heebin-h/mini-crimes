@@ -196,3 +196,17 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 - 이름·id 사칭: 인증이 없는 구조상 한계. README에 명시.
 
 **검증**: 단위 21 PASS(+4), E2E 9/9 PASS(+1), lint 신규 경고 없음
+
+## 2026-11-17 — H-1 ICE(TURN) 서술 정정 + `VITE_ICE_SERVERS` (`fix/p2p-hardening`)
+
+**재분석 결과(분석 → 작업 대상)**
+- 배포 상태: Pages(`heebin-h.github.io/mini-crimes/`)는 200이고 마지막 Actions 성공은 2026-11-09(PR #2). 즉 **서버 의존 구버전이 서빙 중**이다. 공개 GitHub API 기준 원격 브랜치는 `main`·`fix/room-state-sync`·`chore/webp-images-base-url`뿐이라 `feat/static-p2p`는 원격에서 확인되지 않았다(이 환경은 SSH 키·`gh` 인증 없음 → 사용자 push 결과 직접 확인 불가).
+- README·roadmap의 "TURN 없음"은 사실과 다르다. PeerJS 1.5.5 기본 `iceServers`에 Google STUN과 `turn:eu-0/us-0.turn.peerjs.com:3478`(공용 계정)이 들어 있다(`client/node_modules/peerjs/dist/bundler.mjs:130-143`). `peerOptions()`는 `config`를 넘기지 않으므로 이 기본값이 적용된다.
+- 코드로 가능한 미완료: 사칭(이름 기반 재접속), 침묵 단절 감지.
+
+**변경**
+- `client/src/net/ice.js` 신규: `parseIceServers(raw)` — 잘못된 값은 로그 후 null(기본값 사용).
+- `client/src/net/socket.js` `peerOptions()`: `VITE_ICE_SERVERS`가 유효하면 `config.iceServers`로 대체.
+- README 한계 문구 정정(공용 TURN은 무료·무보증, 성공률 미실측) + 환경변수 표, `.env.example`.
+
+**검증**: 단위 24 PASS(+3). 실제 TURN 경유 연결은 미검증.
