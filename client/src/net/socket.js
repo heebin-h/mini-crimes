@@ -11,6 +11,7 @@
 import Peer from 'peerjs';
 import { createHostRoom } from './hostRoom.js';
 import { parseIceServers } from './ice.js';
+import { createHeartbeat } from './heartbeat.js';
 import { getCase } from '../data/cases.js';
 import { loadCaseAnswer } from '../game/grading.js';
 
@@ -108,6 +109,8 @@ class P2PSocket {
     this.queue = [];           // 연결·복구 중 보낸 이벤트 (socket.io 버퍼링과 동일)
     this.seq = 0;
     this.token = null;         // 게스트: 참가 비밀 토큰
+    this.hb = null;            // 게스트: 방장 연결 감시
+    this.hbs = new Map();      // 방장: DataConnection → 게스트 감시
     this._reconnecting = false;
     this.epoch = (this.epoch ?? 0) + 1; // leave 이후 늦게 끝난 비동기 작업 무시용
   }
@@ -196,8 +199,23 @@ class P2PSocket {
       onChange: () => ss.set(HOST_SNAPSHOT_KEY, this.host?.snapshot()),
     });
     peer.on('connection', conn => {
-      conn.on('data', msg => this._onHostData(conn, msg));
+      // 게스트가 ping을 보내므로, 침묵이 길면 bye·close 없이 끊긴 것으로 보고 정리(→ 퇴장 유예 시작)
+      const hb = createHeartbeat({
+        onTimeout: () => {
+          console.warn('[p2p] guest heartbeat timeout', conn.peer);
+          const registered = this.conns.get(conn.peer) === conn;
+          if (registered) this.conns.delete(conn.peer);
+          this.hbs.delete(conn);
+          try { conn.close(); } catch { /* noop */ }
+          if (registered) this.host?.peerDisconnected(conn.peer);
+        },
+      });
+      this.hbs.set(conn, hb);
+      hb.start();
+      conn.on('data', msg => { hb.touch(); this._onHostData(conn, msg); });
       conn.on('close', () => {
+        hb.stop();
+        this.hbs.delete(conn);
         if (this.conns.get(conn.peer) !== conn) return;
         this.conns.delete(conn.peer);
         this.host?.peerDisconnected(conn.peer);
@@ -225,7 +243,10 @@ class P2PSocket {
   }
 
   _onHostData(conn, msg) {
+    if (msg?.t === 'ping') { try { if (conn.open) conn.send({ t: 'pong' }); } catch { /* noop */ } return; }
     if (msg?.t === 'bye') { // 게스트가 페이지를 떠남 — 연결 종료 감지를 기다리지 않고 유예 시작
+      this.hbs.get(conn)?.stop();
+      this.hbs.delete(conn);
       if (this.conns.get(conn.peer) === conn) { this.conns.delete(conn.peer); this.host?.peerDisconnected(conn.peer); }
       return;
     }
@@ -302,8 +323,17 @@ class P2PSocket {
   _attachGuestConn(conn, code, playerName) {
     // connected는 room:join 승인 후에 세운다 — 그 전 화면 이벤트는 큐로 가서 끊긴 동안의 이벤트 뒤에 순서대로 전송
     this.conn = conn;
+    // 방장이 보내는 어떤 메시지(pong 포함)든 생존 신호. 침묵이 길면 연결이 닫힌 것으로 처리(→ 재연결 루프)
+    const hb = createHeartbeat({
+      sendPing: () => { if (conn.open) conn.send({ t: 'ping' }); },
+      onTimeout: () => { console.warn('[p2p] host heartbeat timeout'); onClosed(); },
+    });
+    this.hb?.stop();
+    this.hb = hb;
     conn.on('data', msg => {
       if (!msg || typeof msg !== 'object') return;
+      hb.touch();
+      if (msg.t === 'pong') return;
       if (msg.t === 'ev' && typeof msg.ev === 'string') this._deliver(msg.ev, msg.p);
       else if (msg.t === 'ack') { const pd = this.pending.get(msg.id); this.pending.delete(msg.id); pd?.ack(msg.r); }
       else if (msg.t === 'bye') onClosed(); // 방장이 페이지를 떠남(새로고침이면 곧 재호스팅) — 즉시 재연결 시작
@@ -312,6 +342,7 @@ class P2PSocket {
     const onClosed = () => {
       if (closed || this.conn !== conn) return; // leave()·교체로 닫힌 연결
       closed = true;
+      hb.stop();
       this.connected = false;
       // 응답 못 받은 요청은 재연결 후 다시 보낸다 (방장 새로고침 중 room:get 실패로 홈으로 튕기지 않게)
       for (const { ev, p, ack } of this.pending.values()) {
@@ -324,6 +355,7 @@ class P2PSocket {
       this._reconnectGuest(code, playerName);
     };
     conn.on('close', onClosed);
+    hb.start();
   }
 
   async _reconnectGuest(code, playerName) {
@@ -382,6 +414,8 @@ class P2PSocket {
     this._bye();
     for (const [, , ack] of this.queue) ack?.({ ok: false, error: 'LEFT' });
     for (const { ack } of this.pending.values()) ack({ ok: false, error: 'LEFT' });
+    this.hb?.stop();
+    for (const h of this.hbs.values()) h.stop();
     const { peer, conn, conns, host } = this;
     this.conn = null; // close 핸들러가 재연결을 시작하지 않도록 먼저 해제
     this.conns = new Map();

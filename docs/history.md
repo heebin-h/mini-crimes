@@ -223,3 +223,13 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 **한계(기록)**: 토큰은 탭 sessionStorage 기준이라 탭을 닫으면 같은 자리로 복귀할 수 없다. 방장 브라우저는 모든 토큰을 알며, 방장 자체의 위변조는 막지 못한다.
 
 **검증**: 단위 26 PASS(+2, 기존 join 테스트에 토큰 반영), lint 신규 경고 없음. E2E(실제 PeerJS)는 H 마지막에 일괄 실행.
+
+## 2026-11-17 — H-3 heartbeat: 침묵 단절 감지 (`fix/p2p-hardening`)
+
+**근본 원인**: 연결 종료 감지가 `pagehide`의 `bye`와 WebRTC `close` 이벤트뿐이었다(`socket.js`). 전원 차단·Wi-Fi 끊김처럼 둘 다 오지 않는 경우는 브라우저 ICE/DTLS 타임아웃(길이 미실측)에 맡겨져, 그동안 방장은 유령 플레이어를 연결 상태로 보고(전원 제출 판정 지연), 게스트는 죽은 방에서 대기했다.
+
+**변경**
+- `client/src/net/heartbeat.js` 신규(순수 모듈): 5초 ping, 15초 침묵 시 `onTimeout`. 틱 간격이 15초를 넘으면(백그라운드 탭 타이머 정지) lastSeen을 갱신해 오탐 방지.
+- `socket.js`: 게스트는 방장 연결에 ping 송신 + 침묵 감시(timeout → 기존 `onClosed` 재연결 루프), 방장은 게스트별 침묵 감시(timeout → `conn.close()` + `peerDisconnected` → 20초 유예)와 ping에 pong 응답. `leave()`에서 전부 정지.
+
+**검증**: 단위 31 PASS(+5), 빌드 성공, E2E(실제 PeerJS) 9/9 PASS — 가장 긴 시나리오(26초)에서도 오탐 없음. **미검증**: 실제 침묵 단절 시 감지까지 걸리는 시간(Playwright offline이 WebRTC에 적용되는지 미확인).
