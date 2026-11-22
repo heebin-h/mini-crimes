@@ -212,7 +212,7 @@ try {
       await clean(P);
       return { pass: note === '새로고침 메모' && ev?.[0] === 0 && t.includes('2/3 정답') && t.includes('PARTIAL'), note, ev, hasScore: t.includes('2/3 정답') };
     });
-    await scenario('메모 디바운스 경계(관찰): 입력 직후 새로고침 시 유실 여부 vs 600ms 후 새로고침', async () => {
+    await scenario('메모 디바운스 경계: 입력 직후 새로고침해도 마지막 입력 보존(F1 수정 후) / 600ms 후도 보존', async () => {
       const c = ALL_CASES[0];
       const P = await newPlayer(browser, '디바운스');
       const trial = async (wait) => {
@@ -227,7 +227,7 @@ try {
       const immediate = await trial(0), after600 = await trial(600);
       await clean(P);
       // 합격 기준은 "600ms 후에는 보존". 즉시 새로고침 결과(immediate)는 현재 동작을 기록하는 관찰값이다
-      return { pass: after600 === '메모-600', immediate, after600, immediateLost: immediate === '' };
+      return { pass: after600 === '메모-600' && immediate.startsWith('메모-'), immediate, after600, immediateLost: immediate === '' };
     });
     await scenario('뒤로가기·앞으로가기: 결과→게임→목록에서 빈 화면·오류 없음', async () => {
       const c = ALL_CASES[0];
@@ -428,7 +428,7 @@ try {
       return { pass: synced && out.every(o => Object.values(o).every(Boolean)) && !f.length, synced, evs, out, f: f.slice(0, 4) };
     });
 
-    await scenario('방 코드 입력 변형(관찰): 소문자·뒤 공백은 참가 성공, 앞 공백은 6자 제한에 잘려 실패', async () => {
+    await scenario('방 코드 입력 변형: 소문자·앞/뒤 공백 모두 참가 성공(F2 수정 후)', async () => {
       const c = ALL_CASES[0];
       const H = await newPlayer(browser, '코드방장');
       const code = await createRoomFor(H, c);
@@ -442,7 +442,7 @@ try {
       }
       await clean(H);
       // 합격 기준: 소문자·뒤 공백은 성공. 앞 공백(붙여넣기 시 흔함)은 현재 동작을 기록하는 관찰값
-      return { pass: out.lower && out.trailingSpace, ...out, leadingSpaceFails: !out.leadingSpace };
+      return { pass: out.lower && out.trailingSpace && out.leadingSpace, ...out };
     });
 
     await scenario('팀 3인: 방장 수동 공개(일부 제출) → 미제출자도 결과 화면 이동, 점수 없음 / 진행·종료 후 참가 거부', async () => {
