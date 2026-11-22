@@ -541,6 +541,28 @@ try {
       await clean(H, G);
       return { pass: tG.includes('2/3 정답') && tH.includes('1/3 정답') && hG.length === 1 && hG[0].correct === 2 && !f.length, scoreAfterReload: tG.includes('2/3 정답'), teamPanelAfterReload: tG.includes('팀 결과'), hist: hG.length, f: f.slice(0, 3) };
     });
+
+    await scenario('팀 진행 중: 게스트가 탭을 닫아도 같은 브라우저 새 탭으로 복귀(F3b 수정) / 다른 브라우저는 거부 유지', async () => {
+      const c = ALL_CASES[0];
+      const H = await newPlayer(browser, '탭방장'), G = await newPlayer(browser, '탭게스트');
+      const code = await createRoomFor(H, c);
+      await joinRoomRaw(G, code); await G.waitForURL(/\/lobby\//, { timeout: 25_000 });
+      await H.getByText('[ 수사 팀 — 2/8 ]').waitFor({ timeout: 20_000 });
+      await H.getByText('▶ 수사 개시').click();
+      for (const p of [H, G]) await p.waitForURL(/\/game\//, { timeout: 20_000 });
+      const ctx = G.context(); await G.close();
+      const G2 = await ctx.newPage(); G2.errors = []; G2.badResponses = [];
+      G2.on('pageerror', e => G2.errors.push(e.message));
+      await joinRoomRaw(G2, code);
+      const back = await G2.waitForURL(/\/game\//, { timeout: 25_000 }).then(() => true).catch(() => false);
+      const other = await newPlayer(browser, '탭게스트'); // 새 컨텍스트 = 다른 브라우저(토큰 없음)
+      await joinRoomRaw(other, code);
+      await other.getByText('이미 진행 중인 게임입니다').waitFor({ timeout: 15_000 }).then(() => {}).catch(() => {});
+      const rejected = (await text(other)).includes('이미 진행 중인 게임입니다') && !other.url().includes('/game/');
+      const f = [...G2.errors];
+      await clean(H, other); await G2.context().close().catch(() => {});
+      return { pass: back && rejected && !f.length, back, rejected, f };
+    });
   }
 } finally {
   await browser.close();
