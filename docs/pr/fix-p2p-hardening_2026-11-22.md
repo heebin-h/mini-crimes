@@ -15,13 +15,17 @@
   - F6 모달 Escape 닫기(`hooks/useEscape.js`), F7 `html lang="ko"`
 
 ## 테스트
-- 단위 40/40, 변이 테스트 18종 18/18 포착, 프로토콜 퍼저 129,792 이벤트 위반 0.
-- 브라우저 E2E 89시나리오, 수정 후 Pages 모사 서버: **Chromium 89/89, Firefox 89/89, WebKit 88/89**, 엔진 혼합 팀(Chromium 방장 + WebKit·Firefox 게스트) 14/14, 기기 프로필 8/8.
+- 단위 45/45, 변이 테스트 18종 18/18 포착, 프로토콜 퍼저 129,792 이벤트 위반 0.
+- 브라우저 E2E 89시나리오, 수정 후 Pages 모사 서버: **Chromium 90/90, Firefox 90/90, WebKit 89/90**, 엔진 혼합 팀(Chromium 방장 + WebKit·Firefox 게스트) 14/14, 기기 프로필 8/8, 유휴·침묵·동시 방 3/3.
 - WebKit 1건: 방장이 닫히는 게스트에게 보낼 때 PeerJS 내부 타이머의 미처리 예외(`Error sending binary data through RTCDataChannel`). 기능 검사는 통과, 앱 코드로 잡기 어려워 관찰로 남김(F5).
 
-## 알려진 한계 / 미결정 (이 PR 범위 밖)
-- **F8** 방장이 사라진 뒤 같은 방 id를 선점한 사람에게 정상 게스트가 접속해 이름·토큰을 보낸다(앱 수준 10/10 실측). 방장 증명 설계 필요.
-- **F3b** 진행 중 탭을 닫으면 같은 이름 새 탭으로 복귀 불가(토큰이 sessionStorage). 정책 결정 필요.
+## 추가 수정 (같은 PR)
+- **F8 방장 신원 증명:** 방 id 선점 시 정상 게스트가 공격자에게 이름·토큰을 보내던 문제(앱 수준 10/10 실측). 방장이 ECDSA P-256 키로 접속마다 서명하고 게스트는 첫 공개키를 pin해, 재접속 때 토큰을 보내기 전에 검증한다(공격자 3변형 유출 0/3). `net/hostProof.js`, `net/socket.js`.
+- **F3b 새 탭 복귀:** 참가 토큰·공개키를 방별 localStorage(6시간)로 옮겨 같은 브라우저의 새 탭에서 진행 중 게임에 복귀한다. 다른 브라우저·기기는 계속 거부.
+
+## 알려진 한계 (이 PR 범위 밖)
+- 방장이 이미 사라진 방에 **처음** 들어오는 사람은 진짜/가짜 방장을 구분할 수 없다(TOFU).
+- 같은 origin(`<user>.github.io`)의 다른 페이지는 `mc:guestSessions`를 읽을 수 있다.
 - 미검증: 실기기, 실제 NAT/TURN, 수 시간 세션, 사람 플레이테스트, 새 코드의 실제 Pages 동작(현재 라이브는 2026-11-09 구버전). 근거·목록: `docs/qa/2026-11-22-cross-browser-and-hijack/action-items.md`.
 - Playwright E2E는 공용 PeerJS 네트워크가 필요해 CI에 넣지 않았다(`PLAYWRIGHT_MODULE`로 외부 설치 사용).
 

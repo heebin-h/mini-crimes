@@ -275,3 +275,5 @@ lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
 
 **수정(같은 날, 별도 커밋)**: F1 노트 flush, F2 방 코드 공백 정규화, F4 시즌 탭 줄바꿈, F6 Escape 모달 닫기(`useEscape`), F7 `lang="ko"`. E2E의 F1·F2 관찰 시나리오를 단언으로 전환.
 **수정 후 검증**: Chromium 89/89, Firefox 89/89, WebKit 88/89(F5 PeerJS 내부 예외), 혼합 엔진 14/14, 기기 프로필 8/8, 단위 40/40. 남은 결정: F3b(토큰 저장소 정책)·F8(방장 증명 설계).
+
+**2차 수정(같은 날)**: F8 방장 신원 증명(`net/hostProof.js`, ECDSA P-256; 게스트 pin·재접속 시 토큰 전 검증), F3b 참가 토큰·공개키를 방별 localStorage(6시간)로 이동. 단위 45/45, 최종 3엔진 Chromium 90/90·Firefox 90/90·WebKit 89/90(F5), 혼합 14/14, 공격자 3변형 토큰 유출 0/3. 한계: 첫 접속 TOFU, 같은 origin 다른 페이지가 localStorage를 읽을 수 있음.

@@ -1,0 +1,5 @@
+PASS S1 유휴 60초(로비 30 + 게임 30) 뒤 연결·노트 동기화·제출·결과 {"lobbyOk":true,"stillGame":true,"noteSynced":true,"errors":[]}
+PASS S2 게스트→방장 전송 침묵 → 방장이 끊김 감지(15초 침묵 + 20초 유예) / 게스트도 방장 무응답을 감지 {"droppedMs":41426,"guestNoticeSec":41,"guestNotice":{"url":"/","warn":"⚠ 방장과의 연결이 끊겨 방이 종료되었습니다 "},"timeline":[{"sec":20,"hostCount":"1"}]}
+PASS S3 동시 2방: 노트 격리·결과 점수 격리 {"notes":["A방 메모","A방 메모","B방 메모","B방 메모"],"scores":["3/3 정답","0/3 정답","0/3 정답","0/3 정답"],"ids":[true],"codes":["PEPFDX","MWBC7X"]}
+
+3/3 PASS

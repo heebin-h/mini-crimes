@@ -19,10 +19,12 @@ const rows = [];
 // A) 같은 탭 새로고침
 await G.reload(); await sleep(7000); rows.push(['A 같은 탭 새로고침', new URL(G.url()).pathname.startsWith('/game/') ? '복귀 성공' : `실패 ${new URL(G.url()).pathname}`]);
 // B) 탭(컨텍스트) 닫고 새 컨텍스트로 즉시 재참가
-await G.context().close(); const G2 = await mk('게스트');
+const gctx = G.context(); await G.close(); const G2 = await gctx.newPage(); // 같은 브라우저(컨텍스트)의 새 탭
+const H2ctx = null;
 const tryJoin = async P => { await P.goto(BASE + '/'); await P.locator('.case-id').first().waitFor(); await P.getByPlaceholder('방 코드').fill(code); await P.getByText('→ 참가').click(); await sleep(6000); return { path: new URL(P.url()).pathname.replace(code, '<code>'), msg: (await text(P)).match(/⚠[^\[]{0,80}/)?.[0]?.trim() ?? null }; };
-rows.push(['B 새 탭(즉시, 유예 중)', JSON.stringify(await tryJoin(G2))]);
+rows.push(['B 같은 브라우저 새 탭(즉시)', JSON.stringify(await tryJoin(G2))]);
 await sleep(25000); // 유예(20초) 경과
-rows.push(['C 새 탭(25초 뒤, 유예 지남)', JSON.stringify(await tryJoin(G2))]);
+rows.push(['C 같은 브라우저 새 탭(25초 뒤)', JSON.stringify(await tryJoin(G2))]);
+const other = await mk('게스트'); rows.push(['D 다른 브라우저(새 컨텍스트, 토큰 없음)', JSON.stringify(await tryJoin(other))]);
 rows.push(['방장 화면(게스트 상태)', (await text(H)).match(/게스트[^ ]*[^\[]{0,40}/)?.[0] ?? '?']);
 console.log(rows.map(r => r.join(' → ')).join('\n')); await b.close();
