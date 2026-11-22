@@ -195,7 +195,7 @@ export default function CaseSelectPage() {
         {/* 케이스 목록 */}
         <main className="mc-select-main" style={{ flex: 1, padding: 28, overflowY: 'auto' }}>
           {/* 시즌 탭 */}
-          <div style={{ display: 'flex', gap: 1, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
             {SEASONS.map(s => {
               const active = season === s;
               return (
