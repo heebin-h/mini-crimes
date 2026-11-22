@@ -130,9 +130,9 @@ export default function CaseSelectPage() {
             <div className="label" style={{ marginBottom: 10 }}>[ 기존 방 참가 ]</div>
             <input
               value={joinCode}
-              onChange={e => { setJoinCode(e.target.value.toUpperCase()); setError(''); }}
+              onChange={e => { setJoinCode(e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 6)); setError(''); }}
               placeholder="방 코드 (예: XK83PQ)"
-              maxLength={6}
+              maxLength={16}
               style={{ letterSpacing: '.1em' }}
               onKeyDown={e => e.key === 'Enter' && joinRoom()}
             />
