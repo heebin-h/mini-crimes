@@ -1,0 +1,12 @@
+PASS 방 생성(Chromium 방장) {"code":"6JD979"}
+PASS WebKit 게스트 참가 
+FAIL Firefox 게스트 참가 
+FAIL 방장 로비 3/8 반영 
+PASS Chromium 게임 화면 진입 
+PASS WebKit 게임 화면 진입 
+FAIL Firefox 게임 화면 진입 
+PASS 노트 WebKit→Chromium 동기화 
+FAIL 노트 WebKit→Firefox 동기화 
+FAIL 예외 {"e":"locator.click: Timeout 30000ms exceeded."}
+
+5/10 PASS

@@ -1,0 +1,24 @@
+import { createRequire } from 'node:module';
+const require = createRequire('/Users/heebiny/diyProj/mini-crimes/client/e2e/x.mjs');
+const { chromium } = require('/Users/heebiny/diyProj/voodoo/node_modules/playwright');
+import { ALL_CASES } from '/Users/heebiny/diyProj/mini-crimes/client/src/data/cases.js';
+const BASE='http://localhost:5173';
+const idx = Number(process.argv[2]); const hostName = process.argv[3]; const guestName = process.argv[4];
+const c = ALL_CASES[idx];
+const b = await chromium.launch();
+async function mk(name){ const ctx=await b.newContext(); await ctx.addInitScript(([n])=>{localStorage.setItem('mc:profiles',JSON.stringify([{id:'p1',name:n,createdAt:'2026'}]));localStorage.setItem('mc:currentProfile','p1');},[name]); const p=await ctx.newPage(); p.logs=[]; p.on('console',m=>{if(/p2p|error|warn/i.test(m.text()))p.logs.push(m.text().slice(0,160))}); p.on('pageerror',e=>p.logs.push('PAGEERR '+e.message)); return p; }
+const H=await mk(hostName), G=await mk(guestName);
+await H.goto(BASE+'/'); await H.locator('.case-id').first().waitFor();
+if(!c.season) await H.getByRole('button',{name:/SPECIAL/}).click();
+const card=H.getByText(c.title,{exact:true}).first().locator('xpath=ancestor::div[.//button[normalize-space()="팀 수사"]][1]');
+await card.getByText('팀 수사',{exact:true}).click();
+await H.locator('.modal-overlay button.btn-primary').last().click();
+await H.waitForURL(/\/lobby\//,{timeout:25000});
+const code=H.url().split('/lobby/')[1]; console.log('code',code,'case',c.id);
+await G.goto(BASE+'/'); await G.locator('.case-id').first().waitFor();
+await G.getByPlaceholder('방 코드').fill(code); await G.getByText('→ 참가').click();
+await new Promise(r=>setTimeout(r,12000));
+console.log('guest url', G.url()); console.log('guest text', (await G.locator('body').innerText()).replace(/\s+/g,' ').slice(0,400));
+console.log('host text', (await H.locator('body').innerText()).replace(/\s+/g,' ').slice(0,300));
+console.log('guest logs', G.logs.slice(0,6)); console.log('host logs', H.logs.slice(0,6));
+await b.close();

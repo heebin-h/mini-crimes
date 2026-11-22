@@ -1,0 +1,11 @@
+단서 Enter 후 모달 | 1
+Escape 후 모달(0이면 닫힘 지원) | 1
+모달 안 Tab 포커스 | BUTTON:#02SEALED
+최종 제출까지 Tab 횟수 | 1
+제출 Enter 후 모달 | 1
+선택 suspect | true
+선택 weapon | true
+선택 motive | true
+모달 제출 포커스 | BUTTON:▶ 최종 제출
+결과 도달 | true
+3/3 정답 표시 | true
