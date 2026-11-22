@@ -42,8 +42,11 @@ export default function GamePage() {
 
   // 멀티: 새로고침 시 P2P 세션 복구(방장 재호스팅 / 게스트 재접속). 방장 연결이 끝내 끊기면 홈으로
   useEffect(() => { if (!isSolo) socket.connect(roomId); }, [isSolo, roomId]);
-  const onHostLost = useCallback(() => {
-    navigate('/', { replace: true, state: { notice: '방장과의 연결이 끊겨 방이 종료되었습니다' } });
+  const onHostLost = useCallback(({ reason } = {}) => {
+    const notice = reason === 'HOST_IMPERSONATED'
+      ? '방장의 신원을 확인하지 못해 연결을 중단했습니다 (다른 사람이 방 주소를 가로챘을 수 있습니다)'
+      : '방장과의 연결이 끊겨 방이 종료되었습니다';
+    navigate('/', { replace: true, state: { notice } });
   }, [navigate]);
   useSocketEvent('host:lost', onHostLost);
 

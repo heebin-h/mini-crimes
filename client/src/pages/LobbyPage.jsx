@@ -42,8 +42,11 @@ export default function LobbyPage() {
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('game:started', onGameStarted);
-  const onHostLost = useCallback(() => {
-    navigate('/', { replace: true, state: { notice: '방장과의 연결이 끊겨 방이 종료되었습니다' } });
+  const onHostLost = useCallback(({ reason } = {}) => {
+    const notice = reason === 'HOST_IMPERSONATED'
+      ? '방장의 신원을 확인하지 못해 연결을 중단했습니다 (다른 사람이 방 주소를 가로챘을 수 있습니다)'
+      : '방장과의 연결이 끊겨 방이 종료되었습니다';
+    navigate('/', { replace: true, state: { notice } });
   }, [navigate]);
   useSocketEvent('host:lost', onHostLost);
   useRoomSync(roomId, true, onRoomState, onRoomSyncError);

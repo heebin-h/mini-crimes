@@ -18,6 +18,8 @@ const JOIN_ERRORS = {
   P2P_UNAVAILABLE: 'P2P 연결 서버에 접속할 수 없습니다 (네트워크 확인)',
   CONNECT_TIMEOUT: '방장에게 연결하지 못했습니다 (네트워크·방화벽 환경에 따라 직접 연결이 막힐 수 있음)',
   CASE_NOT_FOUND: '케이스를 찾을 수 없습니다',
+  HOST_VERIFY_FAILED: '방장 확인에 실패했습니다 (방장이 접속 중인지 확인하세요)',
+  HOST_IMPERSONATED: '방장의 신원을 확인하지 못해 연결을 중단했습니다 (다른 사람이 방 주소를 가로챘을 수 있습니다)',
 };
 
 export default function CaseSelectPage() {
@@ -36,7 +38,7 @@ export default function CaseSelectPage() {
   // 홈 진입 = 방 나가기 (방장이면 방 종료). 새로고침 복구 세션도 정리
   useEffect(() => { socket.leave(); }, []);
   // 참가 도중 연결이 끊겨 재연결도 실패한 경우 — '연결 중' 상태에 멈추지 않게
-  const onHostLost = useCallback(() => { setJoining(false); setError(JOIN_ERRORS.CONNECT_TIMEOUT); }, []);
+  const onHostLost = useCallback(({ reason } = {}) => { setJoining(false); setError(JOIN_ERRORS[reason] ?? JOIN_ERRORS.CONNECT_TIMEOUT); }, []);
   useSocketEvent('host:lost', onHostLost);
 
   const filtered = cases.filter(c =>

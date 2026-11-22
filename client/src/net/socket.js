@@ -12,6 +12,7 @@ import Peer from 'peerjs';
 import { createHostRoom } from './hostRoom.js';
 import { parseIceServers } from './ice.js';
 import { createHeartbeat } from './heartbeat.js';
+import { generateHostKey, signProof, verifyProof, samePub, isValidPub } from './hostProof.js';
 import { getCase } from '../data/cases.js';
 import { loadCaseAnswer } from '../game/grading.js';
 
@@ -19,6 +20,10 @@ const env = import.meta.env ?? {};
 export const PEER_PREFIX = env.VITE_PEER_PREFIX || 'mini-crimes-v1-';
 const SESSION_KEY = 'mc:session';
 const HOST_SNAPSHOT_KEY = 'mc:hostRoom';
+const HOST_KEY = 'mc:hostKey';           // 방장 서명 키(JWK) — 새로고침 재호스팅에서도 같은 신원을 유지
+const GUEST_STORE = 'mc:guestSessions';  // localStorage: 방별 { name, token, pin, ts } — 탭을 닫거나 새 탭으로 열어도 같은 자리 복귀
+const GUEST_TTL = 6 * 60 * 60 * 1000;
+const GUEST_MAX = 20;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동 문자(0/O, 1/I) 제외
 const CODE_LEN = 6;
 const T = {
@@ -56,6 +61,23 @@ const ss = {
   get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch { /* 저장소 차단 — 새로고침 복구만 불가 */ } },
   del(k) { try { sessionStorage.removeItem(k); } catch { /* noop */ } },
+};
+
+// 게스트 자리 기억(localStorage). 이름이 같을 때만 토큰을 이어 쓰고, 6시간 지난 항목은 버린다
+const gs = {
+  _all() { try { const o = JSON.parse(localStorage.getItem(GUEST_STORE)); return o && typeof o === 'object' ? o : {}; } catch { return {}; } },
+  get(code, name) {
+    const e = this._all()[code];
+    if (!e || e.name !== name || Date.now() - e.ts > GUEST_TTL || !/^[0-9a-f]{32}$/.test(e.token ?? '')) return null;
+    return { token: e.token, pin: isValidPub(e.pin) ? e.pin : null };
+  },
+  set(code, name, token, pin) {
+    try {
+      const all = this._all(); all[code] = { name, token, pin, ts: Date.now() };
+      const keep = Object.entries(all).filter(([, e]) => Date.now() - e.ts <= GUEST_TTL).sort((a, b) => b[1].ts - a[1].ts).slice(0, GUEST_MAX);
+      localStorage.setItem(GUEST_STORE, JSON.stringify(Object.fromEntries(keep)));
+    } catch { /* 저장소 차단 — 새 탭 복귀만 불가 */ }
+  },
 };
 
 function openPeer(id) {
@@ -109,6 +131,10 @@ class P2PSocket {
     this.queue = [];           // 연결·복구 중 보낸 이벤트 (socket.io 버퍼링과 동일)
     this.seq = 0;
     this.token = null;         // 게스트: 참가 비밀 토큰
+    this.hostPin = null;       // 게스트: 처음 본 방장 공개키(이후 재접속에서 같은 키의 서명을 요구)
+    this._onProof = null;      // 게스트: 방장 증명 응답 대기 콜백
+    this.hostKey = null;       // 방장: 서명 키쌍(JWK)
+    this.roomCode = null;
     this.hb = null;            // 게스트: 방장 연결 감시
     this.hbs = new Map();      // 방장: DataConnection → 게스트 감시
     this._reconnecting = false;
@@ -177,6 +203,10 @@ class P2PSocket {
     if (epoch !== this.epoch) { peer?.destroy(); return; }
     if (!peer) return ack?.({ ok: false, error: 'P2P_UNAVAILABLE' });
 
+    try { this.hostKey = await generateHostKey(); } catch (e) { console.error('[p2p] host key failed', e); peer.destroy(); return ack?.({ ok: false, error: 'P2P_UNAVAILABLE' }); }
+    if (epoch !== this.epoch) { peer.destroy(); return; }
+    ss.set(HOST_KEY, this.hostKey);
+    this.roomCode = code;
     this._becomeHost(peer);
     this.host.handle(this.id, 'room:create', { roomId: code, caseId, playerName }, res => {
       if (!res?.ok) { this.leave(); return ack?.(res); }
@@ -244,6 +274,7 @@ class P2PSocket {
 
   _onHostData(conn, msg) {
     if (msg?.t === 'ping') { try { if (conn.open) conn.send({ t: 'pong' }); } catch { /* noop */ } return; }
+    if (msg?.t === 'hello') { this._answerHello(conn, msg.n); return; }
     if (msg?.t === 'bye') { // 게스트가 페이지를 떠남 — 연결 종료 감지를 기다리지 않고 유예 시작
       this.hbs.get(conn)?.stop();
       this.hbs.delete(conn);
@@ -258,9 +289,20 @@ class P2PSocket {
     this.host.handle(conn.peer, msg.ev, msg.p, reply);
   }
 
+  // 게스트의 nonce에 서명해 돌려준다 — 방 id를 선점한 다른 사람은 개인키가 없어 만들 수 없다
+  async _answerHello(conn, nonce) {
+    if (typeof nonce !== 'string' || nonce.length === 0 || nonce.length > 64 || !this.hostKey || !this.roomCode) return;
+    try {
+      const sig = await signProof(this.hostKey.priv, this.roomCode, nonce);
+      if (conn.open) conn.send({ t: 'proof', pub: this.hostKey.pub, sig });
+    } catch (e) { console.warn('[p2p] proof failed', e); }
+  }
+
   async _rehost(s) {
     const snap = ss.get(HOST_SNAPSHOT_KEY);
     if (!snap || snap.roomId !== s.roomId) return this._lost('HOST_STATE_MISSING');
+    const key = ss.get(HOST_KEY);
+    if (!key?.priv || !isValidPub(key.pub)) return this._lost('HOST_STATE_MISSING');
     this.mode = 'host'; // 복구 중 보낸 이벤트는 큐에 쌓인다
     const epoch = this.epoch;
     const until = Date.now() + T.rehostWindow;
@@ -268,6 +310,8 @@ class P2PSocket {
       try {
         const peer = await openPeer(PEER_PREFIX + s.roomId);
         if (epoch !== this.epoch) { peer.destroy(); return; }
+        this.hostKey = key;
+        this.roomCode = s.roomId;
         this._becomeHost(peer);
         if (!this.host.restore(snap, peer.id)) return this._lost('HOST_STATE_INVALID');
         this._local('connect');
@@ -283,11 +327,15 @@ class P2PSocket {
   }
 
   // ── 게스트 ─────────────────────────────────
-  async _startGuest({ roomId, playerName, token }, ack, isRestore) {
+  async _startGuest({ roomId, playerName, token, pin }, ack, isRestore) {
     if (!isRestore) this.leave();
     const code = String(roomId ?? '').trim().toUpperCase();
     this.mode = 'guest';
-    this.token = (isRestore && token) || genToken(); // 새로고침 복귀는 세션의 토큰을 이어 써야 같은 자리를 되찾는다
+    // 같은 방·같은 이름으로 기억된 자리(새로고침·탭 닫기·새 탭)면 토큰과 방장 공개키를 이어 써야 같은 자리를 되찾고 방장도 검증한다
+    const saved = gs.get(code, playerName);
+    this.token = (isRestore && token) || saved?.token || genToken();
+    this.hostPin = (isRestore && isValidPub(pin) ? pin : null) || saved?.pin || null;
+    this.roomCode = code;
     const epoch = this.epoch;
     const fail = error => {
       if (epoch !== this.epoch) return;
@@ -309,10 +357,19 @@ class P2PSocket {
     if (epoch !== this.epoch) return conn.close();
     this._attachGuestConn(conn, code, playerName);
 
+    // 토큰을 보내기 전에 방장 신원부터 확인한다
+    const bad = await this._verifyHost(code);
+    if (epoch !== this.epoch) return;
+    if (bad) {
+      const reason = bad === 'MISMATCH' ? 'HOST_IMPERSONATED' : 'HOST_VERIFY_FAILED';
+      return isRestore ? this._lost(reason) : fail(reason);
+    }
+
     this._send('room:join', { roomId: code, playerName, token: this.token }, res => {
       if (epoch !== this.epoch) return;
       if (!res?.ok) { this.leave(); return ack?.(res ?? { ok: false, error: 'JOIN_FAILED' }); }
-      ss.set(SESSION_KEY, { mode: 'guest', roomId: code, playerName, token: this.token });
+      ss.set(SESSION_KEY, { mode: 'guest', roomId: code, playerName, token: this.token, pin: this.hostPin });
+      gs.set(code, playerName, this.token, this.hostPin);
       this.connected = true;
       this._local('connect');
       this._flush();
@@ -336,6 +393,7 @@ class P2PSocket {
       if (msg.t === 'pong') return;
       if (msg.t === 'ev' && typeof msg.ev === 'string') this._deliver(msg.ev, msg.p);
       else if (msg.t === 'ack') { const pd = this.pending.get(msg.id); this.pending.delete(msg.id); pd?.ack(msg.r); }
+      else if (msg.t === 'proof') this._onProof?.(msg);
       else if (msg.t === 'bye') onClosed(); // 방장이 페이지를 떠남(새로고침이면 곧 재호스팅) — 즉시 재연결 시작
     });
     let closed = false;
@@ -358,12 +416,29 @@ class P2PSocket {
     hb.start();
   }
 
+  /** 방장 신원 확인. 통과하면 null, 아니면 'NO_PROOF'(응답 없음·형식 오류) | 'MISMATCH'(pin과 다른 키 또는 서명 불일치) */
+  async _verifyHost(code) {
+    const nonce = genToken();
+    const proof = await new Promise(res => {
+      const t = setTimeout(() => { this._onProof = null; res(null); }, 5000);
+      this._onProof = m => { clearTimeout(t); this._onProof = null; res(m); };
+      try { this.conn.send({ t: 'hello', n: nonce }); } catch { clearTimeout(t); this._onProof = null; res(null); }
+    });
+    if (!proof) return 'NO_PROOF';
+    if (!isValidPub(proof.pub)) return 'NO_PROOF';
+    if (!(await verifyProof(proof.pub, code, nonce, proof.sig))) return 'MISMATCH';
+    if (this.hostPin && !samePub(this.hostPin, proof.pub)) return 'MISMATCH';
+    if (!this.hostPin) this.hostPin = { kty: proof.pub.kty, crv: proof.pub.crv, x: proof.pub.x, y: proof.pub.y };
+    return null;
+  }
+
   async _reconnectGuest(code, playerName) {
     if (this._reconnecting) return; // 재연결 중 다시 끊겨도 루프를 겹쳐 돌리지 않는다
     this._reconnecting = true;
     const epoch = this.epoch;
     try {
       const until = Date.now() + T.reconnectWindow;
+      let lastBad = null;
       while (Date.now() < until) {
         await sleep(T.retryGap);
         if (epoch !== this.epoch) return;
@@ -372,6 +447,10 @@ class P2PSocket {
           const conn = await openConn(this.peer, PEER_PREFIX + code);
           if (epoch !== this.epoch) return conn.close();
           this._attachGuestConn(conn, code, playerName);
+          const bad = await this._verifyHost(code);
+          if (epoch !== this.epoch) return;
+          if (bad) { if (bad === 'MISMATCH' || !lastBad) lastBad = bad; // 가짜 방장을 한 번이라도 봤으면 마지막 안내에 남긴다
+            try { conn.close(); } catch { /* noop */ } continue; } // 토큰을 보내지 않고 재시도(진짜 방장이 돌아올 수 있음)
           const res = await new Promise(r => this._send('room:join', { roomId: code, playerName, token: this.token }, r));
           if (epoch !== this.epoch) return;
           if (res?.error === 'DISCONNECTED' || res?.error === 'SEND_FAILED') continue; // join 중 다시 끊김 — 재시도
@@ -379,7 +458,7 @@ class P2PSocket {
           return this._lost(res?.error ?? 'JOIN_FAILED'); // 방은 있으나 복귀 거부(진행 중 신규 등)
         } catch { /* 방장 새로고침 중일 수 있음 — 재시도 */ }
       }
-      if (epoch === this.epoch) this._lost('HOST_LOST');
+      if (epoch === this.epoch) this._lost(lastBad === 'MISMATCH' ? 'HOST_IMPERSONATED' : 'HOST_LOST');
     } finally {
       if (epoch === this.epoch) this._reconnecting = false;
     }
@@ -392,7 +471,7 @@ class P2PSocket {
     const s = ss.get(SESSION_KEY);
     if (!s?.roomId || (roomIdHint && s.roomId !== roomIdHint)) return;
     if (s.mode === 'host') this._rehost(s);
-    else this._startGuest({ roomId: s.roomId, playerName: s.playerName, token: s.token }, null, true);
+    else this._startGuest({ roomId: s.roomId, playerName: s.playerName, token: s.token, pin: s.pin }, null, true);
   }
 
   _lost(reason) {
@@ -425,6 +504,7 @@ class P2PSocket {
     try { peer?.destroy(); } catch { /* noop */ }
     ss.del(SESSION_KEY);
     ss.del(HOST_SNAPSHOT_KEY);
+    ss.del(HOST_KEY);
     this._reset();
   }
 }
