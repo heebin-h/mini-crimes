@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import useEscape from '../../hooks/useEscape';
 
 const CHOICE_LABELS = ['A', 'B', 'C', 'D'];
 
@@ -7,6 +8,7 @@ export default function AnswerModal({ questions = [], choices = {}, onSubmit, on
     Object.fromEntries(questions.map(q => [q.id, '']))
   );
 
+  useEscape(onClose);
   const allFilled = questions.every(q => answers[q.id]);
 
   function pick(qid, text) {

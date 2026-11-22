@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { assetUrl } from '../../assetUrl';
+import useEscape from '../../hooks/useEscape';
 
 // revealedClues: string[]  — 공개된 clueId 목록
 // focusedBy: { clueId -> playerName }
@@ -22,6 +23,7 @@ export default function CluePanel({ clueCards = [], warningCard, revealedClues =
     setModal(null);
     onFocus?.(null);
   }
+  useEscape(closeModal, !!modal);
 
   const revealed = revealedClues.length;
   const total = clueCards.length;
