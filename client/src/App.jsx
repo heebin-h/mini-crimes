@@ -1,34 +1,29 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './AuthContext';
-import AuthPage from './pages/AuthPage';
+import { ProfileProvider, useProfile } from './ProfileContext';
+import ProfilePage from './pages/ProfilePage';
 import CaseSelectPage from './pages/CaseSelectPage';
 import LobbyPage from './pages/LobbyPage';
 import GamePage from './pages/GamePage';
 import ResultPage from './pages/ResultPage';
 
-function RequireAuth({ children }) {
-  const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
-}
-
-function GuestOnly({ children }) {
-  const { user } = useAuth();
-  return user ? <Navigate to="/" replace /> : children;
+function RequireProfile({ children }) {
+  const { profile } = useProfile();
+  return profile ? children : <Navigate to="/profile" replace />;
 }
 
 export default function App() {
   return (
-    <AuthProvider>
+    <ProfileProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
-          <Route path="/login" element={<GuestOnly><AuthPage /></GuestOnly>} />
-          <Route path="/" element={<RequireAuth><CaseSelectPage /></RequireAuth>} />
-          <Route path="/lobby/:roomId" element={<RequireAuth><LobbyPage /></RequireAuth>} />
-          <Route path="/game/:roomId" element={<RequireAuth><GamePage /></RequireAuth>} />
-          <Route path="/result/:roomId" element={<RequireAuth><ResultPage /></RequireAuth>} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/" element={<RequireProfile><CaseSelectPage /></RequireProfile>} />
+          <Route path="/lobby/:roomId" element={<RequireProfile><LobbyPage /></RequireProfile>} />
+          <Route path="/game/:roomId" element={<RequireProfile><GamePage /></RequireProfile>} />
+          <Route path="/result/:roomId" element={<RequireProfile><ResultPage /></RequireProfile>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+    </ProfileProvider>
   );
 }

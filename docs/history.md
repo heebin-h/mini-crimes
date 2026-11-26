@@ -1,0 +1,279 @@
+# mini-crimes 작업 이력
+
+> 날짜별 결정·근거·검증. 체크리스트는 `docs/roadmap.md`.
+
+## 2026-11-10 — P0-1 멀티 방 상태 동기화 (`fix/room-state-sync`)
+
+**증상**: 팀 수사에서 게스트 로비 "0/8 연결 중" 고착, 1인 팀 수사 8초 후 홈으로 튕김, 게임 화면 단서 0/0·현장 이미지·선택지 없음 → 플레이 불가. 솔로는 정상.
+
+**근본 원인**: 서버는 `room:create`/`room:join`/`game:start` 직후 `room:state`를 1회 push. 클라이언트는 ack·`game:started` 수신 시 `navigate()`만 하고 다음 페이지가 마운트 후 `useEffect`에서야 구독 → 그 사이 도착한 상태 유실. 재요청 수단 없음.
+
+**결정**
+- pull(`room:get`) 추가, 기존 push 유지. `navigate(state)` 전달안은 새로고침 대응 불가라 기각.
+- `room:get`은 요청 roomId와 소켓의 현재 방이 같을 때만 응답 — 같은 소켓으로 다른 방 URL 진입 시 이전 방 노출 방지.
+- 클라는 URL roomId와 다른 방 상태 push도 무시(소켓이 이전 방에 남아 있음).
+- 공유 노트는 진입 시 pull 결과에만 반영 — push마다 덮으면 입력 중 글자가 이전 값으로 되돌아갈 수 있음.
+- GamePage 동기화 실패 시 홈 이동은 임시 처리. 새로고침 복귀는 P0-2.
+
+**리뷰** (독립 리뷰 1회): 중간 3(이전 방 노출 회귀, 로비 `game:started` 유실 시 고착, GamePage 실패 미처리)·낮음 2(노트 미반영, 정상 경로 warn 로그) 전부 반영.
+
+**검증** (로컬, playwright 2컨텍스트, server :3001 + vite :5173)
+
+| 시나리오 | 수정 전 | 1차 수정 | 리뷰 반영 후 |
+|---|---|---|---|
+| 2인 생성→참가(2/8)→개시→단서 10장·현장→단서 공개 동기화 ×5 | 5 FAIL | 5 PASS | 5 PASS |
+| 1인 팀 수사 (8초 경과 후에도 로비 유지 → 개시) | FAIL | PASS | PASS |
+| 같은 소켓 다른 방 로비 URL → 이전 방 미노출 | — | FAIL | PASS |
+| 개시 후 로비 늦게 진입 → 게임 진입 | — | FAIL | PASS |
+| 같은 소켓 다른 방 게임 URL → 홈 | — | FAIL | PASS |
+| 게임 재진입 시 공유 노트 복원 | — | FAIL | PASS |
+| 솔로 모드 회귀 | PASS | PASS | PASS |
+
+lint: 신규 경고 없음(기존 2건 동일). 배포 환경 실기 미확인.
+
+## 2026-11-10 — 이미지 WebP 전환 + 서브경로 배포 이미지 404 (PR #2, main 머지 `c09f1e2`)
+
+- 이미지 130장 JPEG → WebP(q75): 5.8MB → 4.2MB(−28%), 해상도 유지. JPEG q70 재인코딩은 원본보다 커져(7.5MB) 기각, WebP q60(−40%)은 현장 확대 시 열화 우려로 기각.
+- `/cases/...` 절대경로가 `VITE_BASE=/mini-crimes/` 빌드에서 도메인 루트로 요청돼 404 → `client/src/assetUrl.js`로 `BASE_URL` 적용.
+- 검증: `VITE_BASE=/mini-crimes/` build + preview에서 썸네일 7/7·현장 1280px·단서 640px 로드, 404 0건. GitHub Pages 실배포 미확인.
+
+## 2026-11-14 — P0-1 머지 전 리뷰 반영 (`fix/room-state-sync`)
+
+**리뷰** (독립 리뷰, 판정 "조건부 머지 가능"): 중간 1·낮음 3 전부 반영.
+- [중간] 정답 공개 후 결과 화면에서 뒤로가기 2회 → 로비 재진입 시 pull이 `revealed` 방을 돌려줘 방장에게 `▶ 수사 개시`가 다시 노출, `game:start`에 phase 검사가 없어 재개시·재공개·history 중복 기록 가능 (pull 도입으로 생긴 경로)
+  → 서버 `game:start`는 `phase === 'lobby'`만 허용, Lobby는 `revealed` 수신 시 홈으로
+- [낮음] `game:started` 경로도 `replace` — 게임에서 뒤로가기 시 로비를 거치지 않음
+- [낮음] Lobby 동기화 실패(`ROOM_NOT_FOUND`/timeout) 시 8초 대기 없이 즉시 홈 (8초 fallback은 무응답 대비로 유지)
+- [낮음] roadmap P0-2 "현재 동작" 설명 정정
+
+**검증** (로컬)
+- 소켓 직접: 생성→개시→제출→공개 후 `game:start` 재전송 → `game:started` 미수신, phase `revealed` 유지
+- 브라우저: 2인 제출→결과(3/3)→게스트 뒤로가기(게임 화면 안정, 루프 없음)→방장 뒤로가기 2회 → 홈, 개시 버튼 미노출, JS 에러 0
+- 회귀 묶음(2인 ×5, 1인 팀, 이전 방 거부, 늦은 로비 진입, 노트 복원, 솔로) 전부 PASS
+- origin/main(PR #2 머지본)과 병합 트리에서 lint·build·회귀 묶음 PASS (이번 수정 전 시점), 충돌 없음
+
+**범위 밖으로 기록**: 서버 `currentRoomId`·socket.io room이 방을 옮겨도 해제되지 않아 이전 방의 `game:revealed`·`note:synced` 등이 다른 화면에 도착할 수 있음 (`room:state`만 roomId 필터). → roadmap P0-2 하위로 이관.
+
+## 2026-11-14 — 게임 개발 체크리스트 기반 전체 리뷰 + 높음 3건 수정 (`fix/server-authority-data-safety`)
+
+**리뷰**: 게임 QA 유형·멀티플레이 테스트·Socket.IO 공식 문서·추리 게임 설계·OWASP WebSocket·접근성·사전 제작 기준을 조사해 전체 대조. 결과 `docs/review/game-dev-checklist-review_2026-11-14.md` (높음 3·중간 8·낮음 3). 중간·낮음은 roadmap P0-2/P0-3 확장, P1-3~5, P3로 이관.
+
+**수정 (높음 3건)**
+- 로비에서 `answer:submit` 시 즉시 공개되어 정답이 전원에게 전송되던 문제(실측) → `answer:submit`·`game:reveal`은 `playing`에서만. payload 없음·null·문자열에도 서버 유지.
+- `users.json`·`history.json` 파싱 실패 시 `[]`로 대체 → 다음 쓰기가 전체 덮어쓰기 → `server/jsonStore.js`: ENOENT만 빈 값, 손상은 에러(파일 보존), 쓰기는 tmp→rename.
+- `server/data` 미추적이라 새 환경에서 쓰기 ENOENT(추정) → 쓰기 시 디렉터리 자동 생성. `DATA_DIR` env 추가(영속 디스크용).
+
+**결정**: 손상 파일은 자동 백업·복구하지 않고 요청을 500으로 거부 — 데이터 보존 우선, 운영자가 로그(`[store] corrupt JSON`)로 인지 후 수동 복구.
+
+**검증** (로컬, 서버 직접 기동 :3101, DATA_DIR 격리)
+- 없는 DATA_DIR → 가입 200·파일 생성 / 손상 파일 → 가입 500·파일 해시 동일·로그 출력·서버 생존 / 재기동 후 기존 계정 유지·tmp 잔여 없음
+- 로비 제출 `{ok:false, NOT_PLAYING}`·공개 없음, 로비 방장 공개 없음, 비정상 payload 3종 후 서버 생존, 진행 중 제출 → 공개·채점 정상
+- 브라우저 회귀(2인 ×5, 1인 팀, 이전 방 거부, 늦은 로비, 노트 복원, 솔로, 결과→뒤로가기) 전부 PASS, 실제 `server/data` 해시 불변
+
+**사고 기록**: 앞선 결과 화면 E2E(11-14 15:49)가 로컬 `server/data/history.json`에 테스트 기록 2건(userId `ra`·`rb`)을 남김. 이후 테스트는 DATA_DIR 격리.
+
+## 2026-11-14 — `41b9673` 독립 리뷰 반영 (`fix/server-authority-data-safety`)
+
+**리뷰 판정**: 머지 가능(중간 2·낮음 6). 단 중간 #2 "다른 소켓 핸들러 null payload 크래시"는 실측 결과 **높음으로 상향** — `room:create`·`room:join`·`note:update`·`clue:reveal`·`clue:focus`·`pointer:move`에 payload 없이 emit 1회로 서버 프로세스 종료(exit=1, TypeError). socket.io 4.8이 리스너를 `process.nextTick`에서 호출해 uncaughtException이 됨. 이 PR 이전부터 존재.
+
+**수정**
+- 모든 소켓 핸들러 공통 래퍼 `on()`: payload 객체 정규화(`emit(ev, cb)` 형태 포함), 예외 격리·로그·`{ok:false, INTERNAL}` ack
+- `server/.env` 자동 로드(`process.loadEnvFile`, Node ≥20.12, 기존 env 우선) — 이전엔 어디서도 로드하지 않아 문서대로 `DATA_DIR`·`JWT_SECRET`을 적어도 무시됨. 기동 시 `[store] data dir` 로그
+- jsonStore: 임시 파일 0600, fsync, 실패 시 tmp 정리, 배열 형식 검증(`{}`·`null` → STORE_CORRUPT), `DATA_DIR` 절대경로화
+- history 기록 실패 로그(기존 `catch {}` 무음), 멀티 기록 플레이어별 격리
+- 전역 에러 핸들러: status 없는 내부 오류는 `INTERNAL_SERVER_ERROR`만 응답(fs 오류 메시지의 서버 절대경로 노출 방지)
+- 클라: 제출 거부(`NOT_PLAYING`) 시 토스트 안내
+- README 환경변수 표 `DATA_DIR`·.env 로드·users.json 생성 시점 정정
+
+**검증** (서버 직접 기동 :3101, DATA_DIR 격리)
+- 12개 이벤트 × 이상 payload 6종(없음·null·문자열·숫자·배열·함수), 방 안/밖 → 서버 생존, TypeError 0
+- 이전 크래시 재현 6개 핸들러 전부 alive
+- 가입 파일 권한 600, 비배열 JSON → 로그인 500 STORE_CORRUPT·파일 보존, EACCES → `INTERNAL_SERVER_ERROR`(경로 미노출)
+- `.env`의 DATA_DIR·JWT_SECRET 적용(복사본 서버로 확인)
+- 이전 데이터·권위 검증, 브라우저 회귀 전부 PASS, 실제 `server/data` 해시 불변
+- 미검증: 클라 `NOT_PLAYING` 토스트는 정상 UI 흐름으로 유발 불가해 브라우저 확인 안 함
+
+**정리**: 로컬 `server/data/history.json`의 테스트 기록 2건(`ra`·`rb`) 삭제(사용자 승인, 백업 후).
+
+## 2026-11-14 — GitHub Pages 정적 전환: P2P 팀 수사 + 로컬 프로필 (`feat/static-p2p`)
+
+**결정** (사용자): 배포는 GitHub Pages만, 자체 서버 없음. 팀 수사 = P2P(WebRTC, PeerJS 1.5.5 MIT, 시그널링은 공용 `0.peerjs.com`), 계정 = 기기별 로컬 프로필(비밀번호 없음).
+
+**구조**
+- `client/src/data/{cases,choices,answers}.js`: 서버 데이터 이전. 정답은 별도 청크로 채점 시 동적 로드. 변환 후 원본과 10케이스 메타·선택지·정답·정답 선택지 불변식 동일 확인.
+- `client/src/net/hostRoom.js`: 서버 방 로직을 방장 브라우저용 순수 모듈로 이식 + 리뷰 미결 항목 반영(phase 검증, payload 정규화·예외 격리, caseId·clueId 검증, 이름 20·노트 5000·답안 200자, 피어별 토큰 버킷, 끊김 유예 20초, 같은 이름 신규 참가 거부(재접속 오매칭 방지), 방 인원 외 이벤트 무시).
+- `client/src/net/socket.js`: socket.io-client와 같은 API의 P2P 전송 계층 — 화면 코드는 import 경로 유지. 새로고침 복구(sessionStorage 세션·방장 방 스냅샷), 페이지 이탈 시 `bye` 신호, 끊긴 요청 재연결 후 재전송.
+- `client/src/profile/store.js` + `ProfileContext`·`ProfilePage`: 로그인·회원가입 대체. 전적은 프로필별 localStorage(최대 100건), 손상 값은 백업 키로 보존.
+- 제거: `AuthContext.jsx`, `AuthPage.jsx`, `api.js`, `socket.io-client` 의존.
+
+**디버깅 기록** (방장 이탈 E2E 실패 2회)
+1. Playwright `context.close()`는 `pagehide`를 발생시키지 않아 bye 없이 WebRTC 감지(수십 초)에 의존 → 25초 room:get 타임아웃이 먼저 홈 이동(안내 없음). 실제 이탈과 같게 `about:blank` 이동으로 테스트 변경, 동기화 실패 이동에도 안내 추가.
+2. 방 소멸 시 대기 요청에 LEFT 응답 → 화면이 '동기화 실패'로 먼저 이동 후 이탈 안내로 재이동(2회). 소멸 시 대기 요청은 응답 없이 폐기.
+
+**검증**
+- 단위 17건 PASS (방 로직 11·데이터/채점/프로필 6)
+- E2E 8/8 PASS (공용 PeerJS 서버 경유, 로컬 Vite): 프로필 진입, 2인 전체 흐름(단서·노트 동기화, 결과 3/3, 양쪽 전적), 1인 팀, 잘못된 코드·같은 이름 거부, 게스트 새로고침 복귀(단서·노트 유지 후 동기화 계속), 방장 새로고침 재호스팅(~0.8초) 후 게스트 재연결·결과, 방장 이탈 → 20.8초 후 안내·홈, 솔로 채점·전적
+- 미검증: 서로 다른 네트워크·모바일 데이터 환경의 P2P 연결(TURN 없음), 방장 네트워크 단절(bye 없음) 감지 시간
+
+## 2026-11-14 — S-6 모바일 반응형 · S-7 CI (`feat/static-p2p`)
+
+- 모바일: 화면 코드가 inline style이라 주요 컨테이너에 className(`mc-header`·`mc-select-*`·`mc-game-*`)을 붙이고 `index.css` ≤768px 미디어쿼리에서 `!important`로 세로 배치. 데스크톱 스타일은 불변.
+  - 검증(iPhone 13 뷰포트): 케이스 선택·게임·단서 모달·제출 모달·결과·로비·프로필 전부 화면 밖 컨트롤 0, 가로 스크롤 없음. 게임 현장 사진 폭 100px → 390px, 단서 카드 겹침 0. 실기기 미확인.
+- CI: `deploy.yml`에 lint·단위 테스트 단계 추가(실패 시 배포 중단), Node 20 → 22(`node --test` 경로 글롭은 Node ≥21 — 20이면 테스트 파일을 못 찾아 실패), `VITE_SERVER_URL` 제거. `vite.config.js` 서버 프록시 제거, `client/.env.example`을 `VITE_BASE`·`VITE_PEER_*`로 교체.
+  - 검증: 로컬에서 CI 순서(lint → test → `VITE_BASE=/mini-crimes/` build) 통과. GitHub Actions 실행은 push 후 확인 필요.
+
+## 2026-11-14 — S-8 문서 · `server/` 삭제 (`feat/static-p2p`)
+
+- `server/` 추적 파일 12개 git 삭제 (사용자 결정). 마지막 서버 버전 커밋 `b2ddb49`(README에 기록). 로컬 `server/data/`(실사용자 데이터, gitignore)·`server/node_modules`는 디스크에 유지.
+- README 재작성: 정적 구조, P2P 동작·한계(정답 완전 비공개 불가, 방장 이탈 시 종료, TURN 없음, 공용 시그널링 의존, 로컬 저장), 파일 구조, 환경변수(`VITE_BASE`·`VITE_PEER_*`), 테스트·배포, 이벤트 규약(`room:get`·`host:lost` 추가), 케이스 추가 경로(`client/src/data/*`).
+- P2 정리 1건: README S1E04 "수장고 둔기 살인" → "둔기 폭행(피해자 생존)" — 게임 데이터 synopsis "목숨은 건졌지만 아직 의식이 없다" 근거.
+
+## 2026-11-14 — origin/main(PR #2) 병합: WebP·assetUrl 반영 (`feat/static-p2p`)
+
+**발견**: 이 브랜치는 PR #2 머지 전 시점에서 갈라져 케이스 경로가 `.jpg`였다. 그대로 main에 머지하면 main에는 WebP만 있으므로 모든 이미지가 깨진다. 또 `server/db.js`(main에서 수정, 여기서 삭제)가 충돌한다.
+
+**처리**: `git merge origin/main`
+- 충돌 3건
+  - `README.md`: 이 브랜치 버전 채택(WebP·assetUrl 이미 반영)
+  - `client/src/data/cases.js`: git이 `server/db.js`의 이름 변경으로 인식 → 이 브랜치 버전 채택 후 경로 `.jpg`→`.webp` 22곳
+  - `CaseSelectPage.jsx`: import 블록 병합(`assetUrl` + 프로필·로컬 데이터)
+- 결과: 추적 jpg 0 / webp 130, `server/` 추적 0.
+
+**검증**
+- lint 신규 경고 없음
+- 단위 17 PASS (이미지 존재 검사가 WebP 경로 확인)
+- `VITE_BASE=/mini-crimes/` 빌드 성공
+- P2P E2E 8/8 PASS
+- 모바일 7화면: 화면 밖 컨트롤 0, 가로 스크롤 없음
+
+## 2026-11-14 — S-9 콘텐츠: SP01~03 배제 단서 보강 + 문서 정합성 (`feat/static-p2p`)
+
+**원칙**: 단서 10장·제목·이미지·정답 불변. 기존 단서 본문에 문장 추가. 시나리오 문서 §9가 의도한 배제 논리를 게임 데이터에 반영(이전엔 문서에만 있고 단서엔 없었음).
+
+| 케이스 | 단서 | 보강 | 해결 |
+|---|---|---|---|
+| SP01 | 01 | 무단 방문 전처 에밀리: 마녀 복장 + 운동화 | 에밀리 배제 |
+| SP01 | 02 | 힐 자국 235mm = 대여 빨간 드레스 세트 구두 | 힐 자국 → 나탈리 특정 근거 |
+| SP01 | 04 | 목격자 A: 그 시각 커티스와 거실 대화(자정까지) / B: 케이터링 홀 서빙 | 커티스·케이터링 배제 |
+| SP01 | 03 | "강효" → "벤조디아제핀계" | 오타 |
+| SP02 | 01 | 추락 시각 00:01 | 알리바이 기준 시각 |
+| SP02 | 04 | 11:57 미켈레가 재킷을 벗겨 벤치에 둠 | 현장 재킷 흐름 연결 |
+| SP02 | 07 | 11:48~00:30 로비 바(결제 00:03) | 프란체스카 11:45 이후 공백 |
+| SP02 | 10 | 전날 옥상 출입은 미켈레 1건, 관리인 지하 점검 | 관리인 배제·볼트 제거 특정 |
+| SP03 | 06 | 연회 중 화장실 복도 출입도 없음 | 루치아노 에피펜 은닉 배제 |
+| SP03 | 08 | 당일 오전 9시~연회 예식·촬영, 주방·화장실 출입 없음 | 알베르토 당일 알리바이 |
+
+**문서**
+- 10개 시나리오 V3 "키워드 매칭" → 4지선다 판정(정답 text 자동 기입)
+- SCENARIO_PLAN 채점 방식·V3 기준·SP02 범인·동기를 게임 데이터 기준으로 정정
+- sp01 "미도라졸람" → "미다조람", s1e01·s1e04 "119" → "118(구급)"
+- 통화(게임 데이터·문서): S1E06·S1E07 원 → 유로, SP01(미국 코네티컷) 23억 원 → 약 160만 달러. 환율은 대략값으로 반올림(1유로≈1,450원).
+
+**유지 결정**: 인물 이름 중복은 그대로 둠. 근거: 케이스별 독립 서사이고, 이름을 바꾸면 cases·choices·answers·keywords가 연쇄로 바뀌어 채점 불일치 위험이 이득보다 큼.
+
+**검증**: 단위 17 PASS(선택지·정답 불변식, 이미지), lint, 빌드, 데이터 변경 전후 정답 동일.
+**미검증**: 실제 플레이어 기준 해결 가능성(외부 플레이테스트 필요).
+
+## 2026-11-14 — P2P 전환 독립 리뷰 반영 (`feat/static-p2p`)
+
+**리뷰 판정**: 조건부 (높음 2·중간 3·낮음 8). 높음·중간과 비용 낮은 낮음 항목 반영.
+
+| 심각도 | 문제 | 수정 | 근거·검증 |
+|---|---|---|---|
+| 높음 | `openPeer`의 `once('error')`가 open 후에도 남음 → 시그널링 일시 끊김(`network`)이나 재연결 중 `peer-unavailable` 한 번에 peer destroy → 방장 방 소멸, 방장 새로고침이 1.5초를 넘기면 게스트 재연결 실패 | open/error/timeout 리스너 상호 해제 | 신규 E2E "방장 5초 이탈 후 복귀": 수정 전 FAIL, 수정 후 PASS |
+| 높음 | 게스트가 `room:create`를 보내 방을 덮어쓰고 방장 권한 탈취 가능 | 방장이 게스트의 `room:create`를 버림 + `hostRoom`은 방이 있으면 `ROOM_EXISTS` | 단위 테스트 |
+| 중간 | `disconnected` 즉시 재등록 반복(백오프 없음) | 지수 백오프(1초→최대 30초) | 코드 |
+| 중간 | 쓰로틀 없는 `pointer:move`가 공용 빈도 버킷을 소진 → 노트·제출 유실 | 클라 50ms 쓰로틀 + 포인터 전용 버킷 | 단위 테스트 |
+| 중간 | 재연결 시 join 승인 전 `connected=true` → 끊긴 동안 쌓인 오래된 이벤트가 최신 값 덮음 | join 승인 후 `connected` 설정·큐 flush | E2E 재연결 시나리오 |
+| 낮음 | 재연결 루프 중복, `peer.connect()` undefined, 참가 중 끊김 시 '연결 중' 고착, 결과 새로고침 시 내 점수 미표시, 로비 이탈자 자리 미반환, 스냅샷 무검증, README 문구 | 각각 수정(재진입 플래그, null 검사, `host:lost` 처리, navigate state `myId`, 유예 만료 시 로비 제거, 형식 검증, README 정정·한계 추가) | 단위 4건 추가 |
+
+**자체 발견**
+- 재연결 중 끊기면 대기 중인 `room:join`이 재전송 큐로 들어갔다. 그러면 flush 때 `_startGuest`가 다시 실행되고, 그 안의 `leave()`가 세션을 지운다. → `room:join`은 큐로 옮기지 않고 `DISCONNECTED`로 실패 처리한다.
+- 리뷰 반영 중 `ResultPage`가 `window.location.state`를 참조하던 오류 → `useLocation()`의 `state`로 수정.
+
+**미반영 (기록)**
+- 공개 이후 재연결로 `answer:submit`이 다시 가서 NOT_PLAYING 토스트가 뜨는 경우: 결과 화면으로 넘어간 뒤라 실제로 보이지 않음.
+- 이름·id 사칭: 인증이 없는 구조상 한계. README에 명시.
+
+**검증**: 단위 21 PASS(+4), E2E 9/9 PASS(+1), lint 신규 경고 없음
+
+## 2026-11-17 — H-1 ICE(TURN) 서술 정정 + `VITE_ICE_SERVERS` (`fix/p2p-hardening`)
+
+**재분석 결과(분석 → 작업 대상)**
+- 배포 상태: Pages(`heebin-h.github.io/mini-crimes/`)는 200이고 마지막 Actions 성공은 2026-11-09(PR #2). 즉 **서버 의존 구버전이 서빙 중**이다. 공개 GitHub API 기준 원격 브랜치는 `main`·`fix/room-state-sync`·`chore/webp-images-base-url`뿐이라 `feat/static-p2p`는 원격에서 확인되지 않았다(이 환경은 SSH 키·`gh` 인증 없음 → 사용자 push 결과 직접 확인 불가).
+- README·roadmap의 "TURN 없음"은 사실과 다르다. PeerJS 1.5.5 기본 `iceServers`에 Google STUN과 `turn:eu-0/us-0.turn.peerjs.com:3478`(공용 계정)이 들어 있다(`client/node_modules/peerjs/dist/bundler.mjs:130-143`). `peerOptions()`는 `config`를 넘기지 않으므로 이 기본값이 적용된다.
+- 코드로 가능한 미완료: 사칭(이름 기반 재접속), 침묵 단절 감지.
+
+**변경**
+- `client/src/net/ice.js` 신규: `parseIceServers(raw)` — 잘못된 값은 로그 후 null(기본값 사용).
+- `client/src/net/socket.js` `peerOptions()`: `VITE_ICE_SERVERS`가 유효하면 `config.iceServers`로 대체.
+- README 한계 문구 정정(공용 TURN은 무료·무보증, 성공률 미실측) + 환경변수 표, `.env.example`.
+
+**검증**: 단위 24 PASS(+3). 실제 TURN 경유 연결은 미검증.
+
+## 2026-11-17 — H-2 참가 비밀 토큰 (`fix/p2p-hardening`)
+
+**근본 원인**: `hostRoom.js`의 재접속 매칭이 `!connected && name === name`뿐이었다(`room:join`). 이름은 로비·결과 화면에 노출되므로, 같은 방의 누구든 끊긴 플레이어 이름으로 접속해 그 자리·제출 답안·(방 상태상) 권한을 이어받을 수 있었다. 이전 README는 "구현하지 않음"으로 기록만 했다.
+
+**변경**
+- `hostRoom.js`: `room:join`에 `token` 필수(`TOKEN_RE` 16~64자 `[A-Za-z0-9_-]`, 없으면 `TOKEN_REQUIRED`). 플레이어에 token 저장, 재접속은 이름+토큰 모두 일치할 때만. `toClient`는 token을 직렬화하지 않아 방 상태·방송에 노출되지 않는다(스냅샷은 같은 기기 sessionStorage에만 저장).
+- `socket.js`: 참가 시 128bit 랜덤 토큰 생성(`crypto.getRandomValues`), 세션에 저장, 새로고침·재연결 때 같은 토큰 재사용, 모든 `room:join`에 첨부.
+- README(한계·이벤트 표) 정정.
+
+**한계(기록)**: 토큰은 탭 sessionStorage 기준이라 탭을 닫으면 같은 자리로 복귀할 수 없다. 방장 브라우저는 모든 토큰을 알며, 방장 자체의 위변조는 막지 못한다.
+
+**검증**: 단위 26 PASS(+2, 기존 join 테스트에 토큰 반영), lint 신규 경고 없음. E2E(실제 PeerJS)는 H 마지막에 일괄 실행.
+
+## 2026-11-17 — H-3 heartbeat: 침묵 단절 감지 (`fix/p2p-hardening`)
+
+**근본 원인**: 연결 종료 감지가 `pagehide`의 `bye`와 WebRTC `close` 이벤트뿐이었다(`socket.js`). 전원 차단·Wi-Fi 끊김처럼 둘 다 오지 않는 경우는 브라우저 ICE/DTLS 타임아웃(길이 미실측)에 맡겨져, 그동안 방장은 유령 플레이어를 연결 상태로 보고(전원 제출 판정 지연), 게스트는 죽은 방에서 대기했다.
+
+**변경**
+- `client/src/net/heartbeat.js` 신규(순수 모듈): 5초 ping, 15초 침묵 시 `onTimeout`. 틱 간격이 15초를 넘으면(백그라운드 탭 타이머 정지) lastSeen을 갱신해 오탐 방지.
+- `socket.js`: 게스트는 방장 연결에 ping 송신 + 침묵 감시(timeout → 기존 `onClosed` 재연결 루프), 방장은 게스트별 침묵 감시(timeout → `conn.close()` + `peerDisconnected` → 20초 유예)와 ping에 pong 응답. `leave()`에서 전부 정지.
+
+**검증**: 단위 31 PASS(+5), 빌드 성공, E2E(실제 PeerJS) 9/9 PASS — 가장 긴 시나리오(26초)에서도 오탐 없음. **미검증**: 실제 침묵 단절 시 감지까지 걸리는 시간(Playwright offline이 WebRTC에 적용되는지 미확인).
+
+## 2026-11-17 — H-4 구버전 P0~P3 로드맵 정리 (`fix/p2p-hardening`)
+
+**원인**: 서버 구조 시절의 P0~P3 체크박스가 S 단계(정적·P2P 전환)로 대체됐는데 미체크 그대로 남아, 로드맵상 "미해결"이 실제 상태와 어긋나 있었다.
+
+**변경(`docs/roadmap.md`)**: 항목별로 대체 근거를 명시해 체크 — P0-2→S-5·H-2, P0-3→S-7, P1-1→S-9, P1-3→S-4, P1-4→S-6, P2→S-9, P3(헬스체크·JWT_SECRET·소켓 인증)→서버 삭제(S-8)·H-2로 소멸. 체크하지 않고 남긴 것: P1-5 외부 플레이테스트, CI E2E 미포함, '늦은 로비 진입' 전용 E2E 없음, 이름 중복 유지 결정.
+**파일 정리**: 빈 디렉터리 `client/public/cases/s1e01 s1e02 … sp03`(이름에 공백, git 미추적)을 `rmdir`로 삭제. 로드맵의 "README `client/src/data/` 수정" 항목은 현재 디렉터리가 실재하고 README 구조도와 일치하므로 해결로 표시.
+**근거 확인**: "데이터 손상 테스트"는 `client/test/data-grading-profile.test.js`의 '손상된 저장값은 백업 후 기본값'으로 확인.
+**검증**: 문서·빈 디렉터리 변경만 — 코드 변경 없음.
+
+## 2026-11-21 — H-5 전체 게임 경우의 수 QA (`fix/p2p-hardening`)
+
+**배경**: "모든 진행 방식·변수를 고려해 테스트하는 게 맞는지 확인하라"는 요청. 감사 결과 기존 테스트(단위 31·E2E 9)는 케이스 10 × 팀 1~8명 × 제출 패턴 조합, URL 직접 접근·뒤로가기·XSS·모바일·배포 base 경로를 덮지 못했다.
+
+**변경(테스트·문서만, 제품 코드 무수정)**
+- `client/test/exhaustive.test.js` 신규: 채점 640조합, 데이터 유일성, 게임 시뮬레이션(10케이스 × 1~8명 × 진행 방식), 프로토콜 퍼저 3000열(129,792 이벤트).
+- `client/e2e/full.e2e.mjs` 신규: 브라우저 89시나리오(솔로 60·이미지 130장·라우팅·프로필·모바일 3종·팀 16).
+- `docs/qa/2026-11-21-full-game-coverage/`: README·커버리지 매트릭스·발견 사항·원본 로그.
+- `docs/qa/2026-11-20-peerjs-id-reuse/`: 추가 25회 반영(총 50회).
+
+**검증**: 단위 40/40, 변이 18종 중 18/18 포착, E2E 개발 서버 88/89(1건 일시 실패, 210판 재현 0건·원인 미확정)·서브경로 빌드 89/89.
+**발견**: F1 노트 300ms 디바운스 유실, F2 방 코드 앞 공백 → 6자 제한에 잘려 참가 실패, F3 새 탭 재참가 20초 거부(토큰 정책의 결과). 제품 코드는 수정하지 않았다.
+**미검증**: 실기기·Chromium 외 브라우저·실제 네트워크(NAT·TURN·침묵 단절)·시나리오 추리 품질·실제 Pages 배포본.
+
+---
+
+## H-6 미검증 재검증 (2026-11-22)
+
+**배경**: H-5 보고에서 "검증하지 못한 것"으로 남긴 항목을 다시 하라는 요청.
+
+**변경(테스트·문서만, 제품 코드 무수정)**
+- `client/e2e/full.e2e.mjs`: `BROWSER`(chromium/firefox/webkit), `ALLOW_404`, 결과 렌더 대기, 취소 요청 오탐 제거, 모바일 넘침을 선언 뷰포트 기준으로 정정.
+- `client/e2e/cross-browser.e2e.mjs`(혼합 엔진 팀), `client/e2e/soak-edge.e2e.mjs`(유휴·침묵·동시 방) 신규.
+- `docs/qa/2026-11-22-cross-browser-and-hijack/`: 증빙·스크립트·로그·`action-items.md`(커밋·수정 취합).
+
+**검증**: Pages 모사 서버에서 3엔진 각 88/89(실패 1건은 F4), 혼합 엔진 팀 14/14, 기기 프로필 6/8, 앱 수준 id 탈취 10/10, 유휴 100초·침묵 감지(방장 ~20초/게스트 ~54초)·동시 방 2개 통과, 단위 40/40.
+**발견**: F4 목록 320px 가로 넘침, F8 방장 id 선점 시 게스트 접속·토큰 전송, F3b 진행 중 새 탭 복귀 영구 불가, F6 Escape 미지원, F7 `lang="en"`, F5 WebKit PeerJS 내부 미처리 예외(관찰).
+**정정**: H-5의 "모바일 320 넘침 0"은 오류. 일시 실패 2건은 렌더 전 읽기 경쟁 조건으로 추정(증명 아님).
+**환경 주의**: Vite 서버 서빙 페이지에서 Playwright Firefox ICE 수집 미시작(정적 서버는 정상, 앱 JS 무관, 원인 미확정).
+
+**수정(같은 날, 별도 커밋)**: F1 노트 flush, F2 방 코드 공백 정규화, F4 시즌 탭 줄바꿈, F6 Escape 모달 닫기(`useEscape`), F7 `lang="ko"`. E2E의 F1·F2 관찰 시나리오를 단언으로 전환.
+**수정 후 검증**: Chromium 89/89, Firefox 89/89, WebKit 88/89(F5 PeerJS 내부 예외), 혼합 엔진 14/14, 기기 프로필 8/8, 단위 40/40. 남은 결정: F3b(토큰 저장소 정책)·F8(방장 증명 설계).
+
+**2차 수정(같은 날)**: F8 방장 신원 증명(`net/hostProof.js`, ECDSA P-256; 게스트 pin·재접속 시 토큰 전 검증), F3b 참가 토큰·공개키를 방별 localStorage(6시간)로 이동. 단위 45/45, 최종 3엔진 Chromium 90/90·Firefox 90/90·WebKit 89/90(F5), 혼합 14/14, 공격자 3변형 토큰 유출 0/3. 한계: 첫 접속 TOFU, 같은 origin 다른 페이지가 localStorage를 읽을 수 있음.

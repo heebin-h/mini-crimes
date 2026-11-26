@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
-import { useSocketEvent } from '../hooks/useSocket';
+import { useSocketEvent, useRoomSync } from '../hooks/useSocket';
 
 export default function LobbyPage() {
   const { roomId } = useParams();
@@ -11,25 +11,45 @@ export default function LobbyPage() {
   const [myId, setMyId] = useState(socket.id ?? '');
 
   useEffect(() => {
-    if (!socket.connected) socket.connect();
+    socket.connect(roomId); // 새로고침 시 P2P 세션 복구 (세션이 이 방일 때만)
     const onConnect = () => setMyId(socket.id);
     socket.on('connect', onConnect);
     return () => socket.off('connect', onConnect);
-  }, []);
+  }, [roomId]);
 
   // URL 직접 접근 등으로 room:state 미수신 시 홈으로
   useEffect(() => {
     const t = setTimeout(() => {
       if (!room) navigate('/');
-    }, 8000);
+    }, 30_000); // P2P 새로고침 복구(방장 재등록 최대 20초) 대기 포함
     return () => clearTimeout(t);
   }, [room, navigate]);
 
-  const onRoomState = useCallback(r => setRoom(r), []);
-  const onGameStarted = useCallback(() => navigate(`/game/${roomId}`), [navigate, roomId]);
+  // 로비 진입(navigate) 중 방장이 개시하면 game:started가 유실될 수 있어 phase로도 진입한다.
+  // URL roomId와 다른 방 상태(이전 방 push 등)는 무시. 같은 라우트에서 roomId만 바뀌면 컴포넌트가 재사용되므로 초기화.
+  useEffect(() => { setRoom(null); }, [roomId]);
+  // 정답 공개가 끝난 방(결과 화면에서 뒤로가기 등)은 로비로 쓰지 않고 홈으로 — 재개시 방지(서버 game:start도 lobby만 허용).
+  const onRoomState = useCallback(r => {
+    if (r?.roomId !== roomId) return;
+    if (r.phase === 'revealed') return navigate('/', { replace: true });
+    setRoom(r);
+    if (r.phase === 'playing') navigate(`/game/${roomId}`, { replace: true });
+  }, [navigate, roomId]);
+  // replace: 게임에서 뒤로가기 시 로비를 거치지 않게 (phase 경로와 동일하게 맞춤)
+  const onGameStarted = useCallback(() => navigate(`/game/${roomId}`, { replace: true }), [navigate, roomId]);
+  // 방이 없다고 확정되면 fallback 타이머를 기다리지 않고 홈으로. 타이머는 무응답 대비로 유지.
+  const onRoomSyncError = useCallback(() => navigate('/', { replace: true, state: { notice: '방 정보를 불러오지 못했습니다 (방이 종료됐거나 연결이 끊김)' } }), [navigate]);
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('game:started', onGameStarted);
+  const onHostLost = useCallback(({ reason } = {}) => {
+    const notice = reason === 'HOST_IMPERSONATED'
+      ? '방장의 신원을 확인하지 못해 연결을 중단했습니다 (다른 사람이 방 주소를 가로챘을 수 있습니다)'
+      : '방장과의 연결이 끊겨 방이 종료되었습니다';
+    navigate('/', { replace: true, state: { notice } });
+  }, [navigate]);
+  useSocketEvent('host:lost', onHostLost);
+  useRoomSync(roomId, true, onRoomState, onRoomSyncError);
 
   function copyCode() {
     navigator.clipboard.writeText(roomId);
@@ -43,7 +63,7 @@ export default function LobbyPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 헤더 */}
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <header className="mc-header" style={{ borderBottom: '1px solid var(--border)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 16 }}>
         <div className="brand-logo">MINI CRIMES</div>
         <span style={{ color: 'var(--border)' }}>|</span>
         <div className="label">BRIEFING ROOM</div>

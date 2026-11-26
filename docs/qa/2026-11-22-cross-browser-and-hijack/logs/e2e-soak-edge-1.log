@@ -1,0 +1,6 @@
+PASS S1 유휴 100초(로비 50 + 게임 50) 뒤 연결·노트 동기화·제출·결과 {"lobbyOk":true,"stillGame":true,"noteSynced":true,"errors":[]}
+FAIL S2 게스트 침묵(frozen) → 방장이 접속 끊김으로 감지(기대 약 15~25초) {"droppedMs":null}
+PASS S2 해동 뒤 상태 관찰(복구 or 안내) {"guestUrl":"/lobby/<code>","hostSees":"2/8(복구)","guestNotice":null}
+FAIL S3 동시 2방: 노트 격리·결과 점수 격리 {"notes":["A방 메모","A방 메모","B방 메모","B방 메모"],"scores":["3/3 정답","0/3 정답","0/3 정답","0/3 정답"],"ids":[false,false,false,false],"codes":["GEMZ4S","4ZVX7B"]}
+
+2/4 PASS

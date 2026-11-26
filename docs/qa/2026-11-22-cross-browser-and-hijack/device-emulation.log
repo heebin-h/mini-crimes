@@ -1,0 +1,10 @@
+FAIL iPhone SE 320x568 webkit 목록 넘침 331>320
+PASS iPhone 13 390x664 webkit 
+PASS iPhone 15 Pro Max 430x739 webkit 
+PASS iPad (gen 7) 810x1080 webkit 
+PASS Pixel 5 393x727 chromium 
+FAIL Galaxy S9+ 320x658 chromium 목록 넘침 331>320
+PASS Galaxy Tab S4 712x1138 chromium 
+PASS Galaxy S5 360x640 chromium 
+
+6/8 PASS

@@ -1,0 +1,16 @@
+PASS 방 생성(Chromium 방장) {"code":"XMVLMC"}
+PASS WebKit 게스트 참가 
+PASS Firefox 게스트 참가 
+PASS 방장 로비 3/8 반영 
+PASS Chromium 게임 화면 진입 
+PASS WebKit 게임 화면 진입 
+PASS Firefox 게임 화면 진입 
+PASS 노트 WebKit→Chromium 동기화 
+PASS 노트 WebKit→Firefox 동기화 
+PASS 단서 공개 동기화(3엔진 EVIDENCE 동일) {"evs":[[1,10],[1,10],[1,10]]}
+PASS Chromium 결과 화면·3/3 정답·팀 결과 
+PASS WebKit 결과 화면·3/3 정답·팀 결과 
+PASS Firefox 결과 화면·3/3 정답·팀 결과 
+PASS 페이지 오류 없음 {"errors":[]}
+
+14/14 PASS

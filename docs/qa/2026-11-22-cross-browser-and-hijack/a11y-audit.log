@@ -1,0 +1,32 @@
+{
+ "list": {
+  "clickNoKey": [],
+  "noAlt": 0,
+  "unnamedBtn": 0,
+  "unlabeledInput": 0,
+  "lang": "en"
+ },
+ "game": {
+  "clickNoKey": [],
+  "noAlt": 0,
+  "unnamedBtn": 0,
+  "unlabeledInput": 0,
+  "lang": "en"
+ },
+ "kbd": {
+  "tileTabs": 5,
+  "modalOpened": true,
+  "escapeCloses": false,
+  "submitTabs": 2,
+  "answerModal": false,
+  "picked": 0,
+  "reachedResult": false
+ },
+ "modal": {
+  "clickNoKey": [],
+  "noAlt": 0,
+  "unnamedBtn": 0,
+  "unlabeledInput": 0,
+  "lang": "en"
+ }
+}

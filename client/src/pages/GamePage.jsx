@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
-import { api } from '../api';
-import { useSocketEvent } from '../hooks/useSocket';
+import { ALL_CASES, getCase } from '../data/cases';
+import { scoreAll, stampOf, loadCaseAnswer } from '../game/grading';
+import { useProfile } from '../ProfileContext';
+import { profileStore } from '../profile/store';
+import { useSocketEvent, useRoomSync } from '../hooks/useSocket';
 import SceneViewer from '../components/game/SceneViewer';
 import CluePanel from '../components/game/CluePanel';
 import SharedNote from '../components/game/SharedNote';
@@ -15,7 +18,10 @@ export default function GamePage() {
   const isSolo = roomId === 'solo';
   const caseId = isSolo ? searchParams.get('caseId') : null;
 
-  const [caseData, setCaseData] = useState(null);
+  const { profile } = useProfile();
+  // 케이스 메타는 번들에 포함(정적 사이트). 멀티는 room.caseId로 resolve
+  const caseData = isSolo ? getCase(caseId) : ALL_CASES;
+  const loading = false;
   const [room, setRoom] = useState(null);
   const [note, setNote] = useState('');
   const noteRef = useRef('');
@@ -23,7 +29,6 @@ export default function GamePage() {
   const [remotePointers, setRemotePointers] = useState([]);
   const [submittedPlayers, setSubmittedPlayers] = useState([]);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
   // 단서 공개 + 경고 카드 상태
   const [revealedClues, setRevealedClues] = useState([]);
@@ -35,27 +40,46 @@ export default function GamePage() {
     return () => socket.off('connect', onConnect);
   }, []);
 
-  const allCasesRef = useRef([]);
+  // 멀티: 새로고침 시 P2P 세션 복구(방장 재호스팅 / 게스트 재접속). 방장 연결이 끝내 끊기면 홈으로
+  useEffect(() => { if (!isSolo) socket.connect(roomId); }, [isSolo, roomId]);
+  const onHostLost = useCallback(({ reason } = {}) => {
+    const notice = reason === 'HOST_IMPERSONATED'
+      ? '방장의 신원을 확인하지 못해 연결을 중단했습니다 (다른 사람이 방 주소를 가로챘을 수 있습니다)'
+      : '방장과의 연결이 끊겨 방이 종료되었습니다';
+    navigate('/', { replace: true, state: { notice } });
+  }, [navigate]);
+  useSocketEvent('host:lost', onHostLost);
 
-  // 케이스 메타 로드
-  useEffect(() => {
-    fetch(api('/api/cases'))
-      .then(r => r.json())
-      .then(cases => {
-        allCasesRef.current = cases;
-        if (isSolo) setCaseData(cases.find(c => c.id === caseId) ?? null);
-        else setCaseData(cases); // 배열로 저장; activeCaseData가 room.caseId로 resolve
-      })
-      .catch(() => setCaseData(null))
-      .finally(() => setLoading(false));
-  }, [isSolo, caseId]);
+  // 전적은 이 기기의 현재 프로필에 기록
+  const recordHistory = useCallback((cid, title, mode, scores) => {
+    if (!profile || !scores) return;
+    const list = Object.values(scores);
+    const correct = list.filter(s => s.correct).length;
+    profileStore.addHistory(profile.id, {
+      caseId: cid, caseTitle: title ?? cid, mode, correct, total: list.length,
+      stamp: stampOf(correct, list.length), playedAt: new Date().toISOString(),
+    });
+  }, [profile]);
 
   // 멀티: room 상태로 케이스 결정 + revealedClues/warningUsed 동기화
   const onRoomState = useCallback((r) => {
+    if (r?.roomId !== roomId) return; // 이전 방 push 무시
     setRoom(r);
     setRevealedClues(r.revealedClues ?? []);
     setWarningUsed(r.warningUsed ?? false);
-  }, []);
+  }, [roomId]);
+
+  // 진입 시 pull 결과에만 sharedNote 반영. push(room:state)마다 덮으면 입력 중 글자가 이전 값으로 되돌아갈 수 있다.
+  const onRoomSynced = useCallback((r) => {
+    onRoomState(r);
+    if (typeof r.sharedNote === 'string') {
+      noteRef.current = r.sharedNote;
+      setNote(r.sharedNote);
+    }
+  }, [onRoomState]);
+
+  // 방 상태를 못 받으면 빈 게임 화면에 멈추지 않도록 홈으로 (새로고침 복귀는 P0-2)
+  const onRoomSyncError = useCallback(() => navigate('/', { replace: true, state: { notice: '방 정보를 불러오지 못했습니다 (방이 종료됐거나 연결이 끊김)' } }), [navigate]);
 
   const onNoteSynced = useCallback(({ text }) => {
     noteRef.current = text;
@@ -102,16 +126,18 @@ export default function GamePage() {
 
   const onGameRevealed = useCallback((data) => {
     const caseRef = activeCaseDataRef.current;
+    recordHistory(data.caseId, caseRef?.titleKo, 'multi', data.scores?.[socket.id]);
     navigate(`/result/${roomId}`, {
       state: {
         ...data,
+        myId: socket.id, // 결과 화면 새로고침 시 socket.id가 사라져도 내 점수 표시
         revealedClues: revealedCluesRef.current,
         warningUsed: warningUsedRef.current,
         totalClues: caseRef?.clueCards?.length ?? 10,
         questions: caseRef?.questions ?? [],
       },
     });
-  }, [navigate, roomId]);
+  }, [navigate, roomId, recordHistory]);
 
   useSocketEvent('room:state', onRoomState);
   useSocketEvent('note:synced', onNoteSynced);
@@ -122,6 +148,7 @@ export default function GamePage() {
   useSocketEvent('pointer:cleared', onPointerCleared);
   useSocketEvent('answer:submitted', onAnswerSubmitted);
   useSocketEvent('game:revealed', onGameRevealed);
+  useRoomSync(roomId, !isSolo, onRoomSynced, onRoomSyncError);
 
   // activeCaseData ref (onGameRevealed 클로저에서 최신값 참조)
   // 멀티: caseData가 배열이면 room.caseId로 resolve — 두 상태 중 어느 쪽이 먼저 와도 대응
@@ -142,7 +169,8 @@ export default function GamePage() {
   }
 
   const onPlayerLeft = useCallback(({ playerId }) => {
-    if (room?.hostId === playerId) showToast('방장이 변경되었습니다');
+    const name = room?.players.find(p => p.id === playerId)?.name ?? '수사관';
+    showToast(`${name} 연결 끊김 — 20초 안에 돌아오면 복귀`);
   }, [room]);
 
   useSocketEvent('player:left', onPlayerLeft);
@@ -174,8 +202,14 @@ export default function GamePage() {
     }
   }
 
+  // 포인터는 50ms 쓰로틀 — mousemove마다 보내면 방장 쪽 빈도 제한·대역폭 낭비
+  const lastPointerAt = useRef(0);
   function handlePointerMove({ x, y }) {
-    if (!isSolo) socket.emit('pointer:move', { x, y });
+    if (isSolo) return;
+    const t = performance.now();
+    if (t - lastPointerAt.current < 50) return;
+    lastPointerAt.current = t;
+    socket.emit('pointer:move', { x, y });
   }
 
   function handlePointerLeave() {
@@ -185,22 +219,19 @@ export default function GamePage() {
   async function submitAnswers(answers) {
     setShowAnswer(false);
     if (isSolo) {
-      const token = localStorage.getItem('mc_token');
-      const res = await fetch(api('/api/score'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ caseId, answers }),
-      });
-      if (!res.ok) { setToast('채점 오류가 발생했습니다'); return; }
-      const { caseAnswer, scores } = await res.json();
+      let caseAnswer = null;
+      try { caseAnswer = await loadCaseAnswer(caseId); } catch (e) { console.error('[grading] answer load failed', e); }
+      if (!caseAnswer) { showToast('채점 데이터를 불러오지 못했습니다'); return; }
+      const scores = scoreAll(answers, caseAnswer);
+      recordHistory(caseId, activeCaseData?.titleKo, 'solo', scores);
       navigate(`/result/solo`, {
         state: { playerAnswers: { solo: answers }, caseAnswer, scores: { solo: scores }, caseId, revealedClues, warningUsed, totalClues, questions: activeCaseData?.questions ?? [] },
       });
     } else {
-      socket.emit('answer:submit', { answers }, () => {});
+      socket.emit('answer:submit', { answers }, (res) => {
+        // 서버는 진행 중(playing)일 때만 제출을 받는다 — 거부 시 무반응으로 보이지 않게 안내
+        if (!res?.ok) showToast(res?.error === 'NOT_PLAYING' ? '진행 중인 게임이 아닙니다' : '제출에 실패했습니다');
+      });
     }
   }
 
@@ -230,9 +261,9 @@ export default function GamePage() {
   );
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="mc-game" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* 헤더 */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+      <div className="mc-game-header" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <span className="brand-logo">MINI CRIMES</span>
         {activeCaseData && (
           <>
@@ -259,9 +290,9 @@ export default function GamePage() {
       </div>
 
       {/* 메인 레이아웃 */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="mc-game-main" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 범죄 현장 뷰어 */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="mc-game-scene" style={{ flex: 1, minWidth: 0 }}>
           <SceneViewer
             imageUrl={activeCaseData?.sceneImage}
             caseId={activeCaseData?.id}
@@ -273,9 +304,9 @@ export default function GamePage() {
         </div>
 
         {/* 우측 패널 */}
-        <div style={{ width: 290, flexShrink: 0, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--surface)', overflow: 'hidden' }}>
+        <div className="mc-game-panel" style={{ width: 290, flexShrink: 0, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--surface)', overflow: 'hidden' }}>
           {/* 단서 카드 */}
-          <div style={{ flex: 1, padding: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div className="mc-game-clues" style={{ flex: 1, padding: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <CluePanel
               clueCards={activeCaseData?.clueCards ?? []}
               warningCard={activeCaseData?.warningCard ?? null}

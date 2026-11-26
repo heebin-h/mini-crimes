@@ -1,0 +1,6 @@
+PASS S1 유휴 4초(로비 2 + 게임 2) 뒤 연결·노트 동기화·제출·결과 {"lobbyOk":true,"stillGame":true,"noteSynced":true,"errors":[]}
+FAIL S2 게스트 침묵(frozen) → 방장이 접속 끊김으로 감지(기대 15초 침묵 + 20초 유예 ≈ 35~45초) {"droppedMs":null,"timeline":[]}
+PASS S2 해동 뒤 상태 관찰(복구 or 안내) {"timersFrozen":false,"ticksDuring":751,"guestUrl":"/lobby/<code>","hostSees":"2/8(복구)","guestNotice":null}
+PASS S3 동시 2방: 노트 격리·결과 점수 격리 {"notes":["A방 메모","A방 메모","B방 메모","B방 메모"],"scores":["3/3 정답","0/3 정답","0/3 정답","0/3 정답"],"ids":[true],"codes":["CVFTPL","XD6ZNZ"]}
+
+3/4 PASS

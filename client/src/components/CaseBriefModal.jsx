@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import useEscape from '../hooks/useEscape';
 
 export default function CaseBriefModal({ caseData, mode, onStart, onClose }) {
   const [typed, setTyped] = useState('');
   const synopsis = caseData?.synopsis ?? '';
+  useEscape(onClose);
 
   // 시놉시스 타이핑 효과
   useEffect(() => {

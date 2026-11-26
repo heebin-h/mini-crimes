@@ -1,37 +1,45 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { socket } from '../socket';
 import CaseBriefModal from '../components/CaseBriefModal';
-import { api } from '../api';
 import { assetUrl } from '../assetUrl';
-import { useAuth } from '../AuthContext';
+import { useSocketEvent } from '../hooks/useSocket';
+import { useProfile } from '../ProfileContext';
+import { profileStore } from '../profile/store';
+import { ALL_CASES } from '../data/cases';
 
 const SEASONS = [1, 2, 'Special'];
 
+const JOIN_ERRORS = {
+  ROOM_NOT_FOUND: '방을 찾을 수 없습니다 (코드 확인 또는 방장 접속 확인)',
+  ROOM_FULL: '방이 꽉 찼습니다',
+  GAME_ALREADY_STARTED: '이미 진행 중인 게임입니다',
+  NAME_TAKEN: '방에 같은 이름의 수사관이 있습니다 — 이름을 바꿔 주세요',
+  P2P_UNAVAILABLE: 'P2P 연결 서버에 접속할 수 없습니다 (네트워크 확인)',
+  CONNECT_TIMEOUT: '방장에게 연결하지 못했습니다 (네트워크·방화벽 환경에 따라 직접 연결이 막힐 수 있음)',
+  CASE_NOT_FOUND: '케이스를 찾을 수 없습니다',
+  HOST_VERIFY_FAILED: '방장 확인에 실패했습니다 (방장이 접속 중인지 확인하세요)',
+  HOST_IMPERSONATED: '방장의 신원을 확인하지 못해 연결을 중단했습니다 (다른 사람이 방 주소를 가로챘을 수 있습니다)',
+};
+
 export default function CaseSelectPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const [cases, setCases] = useState([]);
+  const location = useLocation();
+  const { profile, signOut } = useProfile();
+  const cases = ALL_CASES;
   const [season, setSeason] = useState(1);
-  const [playerName, setPlayerName] = useState(() => user?.name || localStorage.getItem('playerName') || '');
+  const [playerName, setPlayerName] = useState(() => profile?.name ?? '');
   const [brief, setBrief] = useState(null); // { caseData, mode }
   const [joinCode, setJoinCode] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(location.state?.notice ?? '');
   const [joining, setJoining] = useState(false);
-  const [recentHistory, setRecentHistory] = useState([]);
+  const [recentHistory] = useState(() => (profile ? profileStore.getHistory(profile.id).slice(0, 5) : []));
 
-  useEffect(() => {
-    fetch(api('/api/cases')).then(r => r.json()).then(setCases).catch(() => setCases([]));
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const token = localStorage.getItem('mc_token');
-    fetch(api('/api/history'), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => setRecentHistory(Array.isArray(d) ? d.slice(0, 5) : []))
-      .catch(() => {});
-  }, [user]);
+  // 홈 진입 = 방 나가기 (방장이면 방 종료). 새로고침 복구 세션도 정리
+  useEffect(() => { socket.leave(); }, []);
+  // 참가 도중 연결이 끊겨 재연결도 실패한 경우 — '연결 중' 상태에 멈추지 않게
+  const onHostLost = useCallback(({ reason } = {}) => { setJoining(false); setError(JOIN_ERRORS[reason] ?? JOIN_ERRORS.CONNECT_TIMEOUT); }, []);
+  useSocketEvent('host:lost', onHostLost);
 
   const filtered = cases.filter(c =>
     season === 'Special' ? c.season == null : c.season === season
@@ -39,7 +47,6 @@ export default function CaseSelectPage() {
 
   function saveName(name) {
     setPlayerName(name);
-    localStorage.setItem('playerName', name);
   }
 
   function handleStart(mode) {
@@ -50,9 +57,11 @@ export default function CaseSelectPage() {
       return;
     }
     if (!playerName.trim()) { setError('이름을 입력하세요'); return; }
-    socket.connect();
-    socket.emit('room:create', { caseId: brief.caseData.id, playerName: playerName.trim() }, ({ roomId }) => {
-      navigate(`/lobby/${roomId}`);
+    setJoining(true);
+    socket.emit('room:create', { caseId: brief.caseData.id, playerName: playerName.trim() }, (res) => {
+      setJoining(false);
+      if (!res?.ok) { setError(JOIN_ERRORS[res?.error] ?? '방을 만들지 못했습니다'); return; }
+      navigate(`/lobby/${res.roomId}`);
     });
   }
 
@@ -61,42 +70,46 @@ export default function CaseSelectPage() {
     const code = joinCode.trim().toUpperCase();
     if (!code) { setError('방 코드를 입력하세요'); return; }
     setJoining(true);
-    socket.connect();
     socket.emit('room:join', { roomId: code, playerName: playerName.trim() }, (res) => {
       setJoining(false);
-      if (!res.ok) {
-        setError({ ROOM_NOT_FOUND: '방을 찾을 수 없습니다', ROOM_FULL: '방이 꽉 찼습니다', GAME_ALREADY_STARTED: '이미 진행 중인 게임입니다' }[res.error] ?? res.error);
+      if (!res?.ok) {
+        setError(JOIN_ERRORS[res?.error] ?? res?.error ?? '참가하지 못했습니다');
         return;
       }
       navigate(`/lobby/${code}`);
     });
   }
 
+  function switchProfile() {
+    signOut();
+    navigate('/profile');
+  }
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* 상단 헤더 */}
-      <header style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+      <header className="mc-header" style={{ borderBottom: '1px solid var(--border)', padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
         <div>
           <div className="brand-logo">MINI CRIMES</div>
           <div className="label" style={{ marginTop: 2 }}>Classified Case Files — Digital Investigation System</div>
         </div>
         <div style={{ flex: 1 }} />
-        {user && (
+        {profile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
-              <span style={{ color: 'var(--amber)' }}>{user.name}</span>
+              <span style={{ color: 'var(--amber)' }}>{profile.name}</span>
             </span>
-            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={logout}>
-              LOGOUT
+            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={switchProfile}>
+              프로필 변경
             </button>
           </div>
         )}
         <span className="stamp stamp-red">Restricted Access</span>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div className="mc-select-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* 사이드바 */}
-        <aside style={{ width: 280, borderRight: '1px solid var(--border)', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, overflowY: 'auto', flexShrink: 0 }}>
+        <aside className="mc-select-aside" style={{ width: 280, borderRight: '1px solid var(--border)', padding: 24, display: 'flex', flexDirection: 'column', gap: 24, overflowY: 'auto', flexShrink: 0 }}>
           {/* 수사관 정보 */}
           <section>
             <div className="label" style={{ marginBottom: 10 }}>[ 수사관 정보 ]</div>
@@ -119,9 +132,9 @@ export default function CaseSelectPage() {
             <div className="label" style={{ marginBottom: 10 }}>[ 기존 방 참가 ]</div>
             <input
               value={joinCode}
-              onChange={e => { setJoinCode(e.target.value.toUpperCase()); setError(''); }}
+              onChange={e => { setJoinCode(e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 6)); setError(''); }}
               placeholder="방 코드 (예: XK83PQ)"
-              maxLength={6}
+              maxLength={16}
               style={{ letterSpacing: '.1em' }}
               onKeyDown={e => e.key === 'Enter' && joinRoom()}
             />
@@ -136,8 +149,13 @@ export default function CaseSelectPage() {
           </section>
 
           {error && (
-            <div style={{ padding: '8px 10px', background: 'var(--surface2)', border: '1px solid var(--border-danger)', color: 'var(--red)', fontSize: 12 }}>
+            <div role="alert" style={{ padding: '8px 10px', background: 'var(--surface2)', border: '1px solid var(--border-danger)', color: 'var(--red)', fontSize: 12 }}>
               ⚠ {error}
+            </div>
+          )}
+          {joining && (
+            <div role="status" style={{ padding: '8px 10px', background: 'var(--surface2)', border: '1px solid var(--border-evidence)', color: 'var(--amber)', fontSize: 12 }}>
+              P2P 연결 중...
             </div>
           )}
 
@@ -177,9 +195,9 @@ export default function CaseSelectPage() {
         </aside>
 
         {/* 케이스 목록 */}
-        <main style={{ flex: 1, padding: 28, overflowY: 'auto' }}>
+        <main className="mc-select-main" style={{ flex: 1, padding: 28, overflowY: 'auto' }}>
           {/* 시즌 탭 */}
-          <div style={{ display: 'flex', gap: 1, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
             {SEASONS.map(s => {
               const active = season === s;
               return (

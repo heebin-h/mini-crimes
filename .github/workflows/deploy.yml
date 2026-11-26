@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22  # node --test 경로 글롭은 Node ≥21
           cache: npm
           cache-dependency-path: client/package-lock.json
 
@@ -30,12 +30,20 @@ jobs:
         run: npm ci
         working-directory: client
 
+      # 회귀 차단: lint·단위 테스트 실패 시 배포하지 않음 (P2P E2E는 공용 PeerJS 서버 의존이라 로컬 실행: npm run e2e)
+      - name: Lint
+        run: npm run lint
+        working-directory: client
+
+      - name: Unit test
+        run: npm test
+        working-directory: client
+
+      # 정적 사이트 — 서버 주소 불필요. 팀 수사는 P2P(PeerJS 공용 시그널링, VITE_PEER_* 로 교체 가능)
       - name: Build
         run: npm run build
         working-directory: client
         env:
-          # 실제 서버 주소로 교체 (예: https://mini-crimes-api.onrender.com)
-          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           VITE_BASE: ${{ secrets.VITE_BASE || '/mini-crimes/' }}
 
       # SPA 라우팅: 404.html = index.html

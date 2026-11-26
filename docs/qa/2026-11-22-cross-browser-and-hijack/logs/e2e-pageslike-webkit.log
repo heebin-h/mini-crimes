@@ -1,0 +1,93 @@
+PASS solo s1e01 패턴=all (945ms) {"pass":true,"k":0,"useWarning":true,"want":3,"stamp":"SOLVED","eff":80,"ev":[0,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e01 패턴=none (438ms) {"pass":true,"k":1,"useWarning":false,"want":0,"stamp":"FAILED","eff":90,"ev":[1,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e01 패턴=first (573ms) {"pass":true,"k":2,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":60,"ev":[2,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e01 패턴=mid (572ms) {"pass":true,"k":3,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":70,"ev":[3,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e01 패턴=last (716ms) {"pass":true,"k":4,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":40,"ev":[4,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e01 패턴=two (717ms) {"pass":true,"k":5,"useWarning":false,"want":2,"stamp":"PARTIAL","eff":50,"ev":[5,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e02 패턴=all (644ms) {"pass":true,"k":3,"useWarning":false,"want":3,"stamp":"SOLVED","eff":70,"ev":[3,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e02 패턴=none (715ms) {"pass":true,"k":4,"useWarning":true,"want":0,"stamp":"FAILED","eff":40,"ev":[4,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e02 패턴=first (717ms) {"pass":true,"k":5,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":50,"ev":[5,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e02 패턴=mid (832ms) {"pass":true,"k":6,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":20,"ev":[6,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e02 패턴=last (866ms) {"pass":true,"k":7,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":30,"ev":[7,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e02 패턴=two (965ms) {"pass":true,"k":8,"useWarning":true,"want":2,"stamp":"PARTIAL","eff":0,"ev":[8,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e03 패턴=all (916ms) {"pass":true,"k":6,"useWarning":true,"want":3,"stamp":"SOLVED","eff":20,"ev":[6,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e03 패턴=none (851ms) {"pass":true,"k":7,"useWarning":false,"want":0,"stamp":"FAILED","eff":30,"ev":[7,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e03 패턴=first (1003ms) {"pass":true,"k":8,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":0,"ev":[8,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e03 패턴=mid (1015ms) {"pass":true,"k":9,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":10,"ev":[9,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e03 패턴=last (1165ms) {"pass":true,"k":10,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":0,"ev":[10,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e03 패턴=two (384ms) {"pass":true,"k":0,"useWarning":false,"want":2,"stamp":"PARTIAL","eff":100,"ev":[0,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e04 패턴=all (1066ms) {"pass":true,"k":9,"useWarning":false,"want":3,"stamp":"SOLVED","eff":10,"ev":[9,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e04 패턴=none (1134ms) {"pass":true,"k":10,"useWarning":true,"want":0,"stamp":"FAILED","eff":0,"ev":[10,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e04 패턴=first (378ms) {"pass":true,"k":0,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":100,"ev":[0,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e04 패턴=mid (514ms) {"pass":true,"k":1,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":70,"ev":[1,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e04 패턴=last (495ms) {"pass":true,"k":2,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":80,"ev":[2,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e04 패턴=two (624ms) {"pass":true,"k":3,"useWarning":true,"want":2,"stamp":"PARTIAL","eff":50,"ev":[3,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e05 패턴=all (499ms) {"pass":true,"k":1,"useWarning":true,"want":3,"stamp":"SOLVED","eff":70,"ev":[1,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e05 패턴=none (531ms) {"pass":true,"k":2,"useWarning":false,"want":0,"stamp":"FAILED","eff":80,"ev":[2,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e05 패턴=first (655ms) {"pass":true,"k":3,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":50,"ev":[3,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e05 패턴=mid (642ms) {"pass":true,"k":4,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":60,"ev":[4,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e05 패턴=last (788ms) {"pass":true,"k":5,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":30,"ev":[5,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e05 패턴=two (784ms) {"pass":true,"k":6,"useWarning":false,"want":2,"stamp":"PARTIAL","eff":40,"ev":[6,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e06 패턴=all (700ms) {"pass":true,"k":4,"useWarning":false,"want":3,"stamp":"SOLVED","eff":60,"ev":[4,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e06 패턴=none (782ms) {"pass":true,"k":5,"useWarning":true,"want":0,"stamp":"FAILED","eff":30,"ev":[5,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e06 패턴=first (801ms) {"pass":true,"k":6,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":40,"ev":[6,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e06 패턴=mid (941ms) {"pass":true,"k":7,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":10,"ev":[7,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e06 패턴=last (907ms) {"pass":true,"k":8,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":20,"ev":[8,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e06 패턴=two (1068ms) {"pass":true,"k":9,"useWarning":true,"want":2,"stamp":"PARTIAL","eff":0,"ev":[9,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e07 패턴=all (998ms) {"pass":true,"k":7,"useWarning":true,"want":3,"stamp":"SOLVED","eff":10,"ev":[7,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e07 패턴=none (934ms) {"pass":true,"k":8,"useWarning":false,"want":0,"stamp":"FAILED","eff":20,"ev":[8,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e07 패턴=first (1074ms) {"pass":true,"k":9,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":0,"ev":[9,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e07 패턴=mid (1038ms) {"pass":true,"k":10,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":0,"ev":[10,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e07 패턴=last (441ms) {"pass":true,"k":0,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":80,"ev":[0,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo s1e07 패턴=two (428ms) {"pass":true,"k":1,"useWarning":false,"want":2,"stamp":"PARTIAL","eff":90,"ev":[1,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp01 패턴=all (1331ms) {"pass":true,"k":10,"useWarning":false,"want":3,"stamp":"SOLVED","eff":0,"ev":[10,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp01 패턴=none (424ms) {"pass":true,"k":0,"useWarning":true,"want":0,"stamp":"FAILED","eff":80,"ev":[0,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp01 패턴=first (430ms) {"pass":true,"k":1,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":90,"ev":[1,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp01 패턴=mid (556ms) {"pass":true,"k":2,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":60,"ev":[2,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp01 패턴=last (573ms) {"pass":true,"k":3,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":70,"ev":[3,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp01 패턴=two (719ms) {"pass":true,"k":4,"useWarning":true,"want":2,"stamp":"PARTIAL","eff":40,"ev":[4,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp02 패턴=all (577ms) {"pass":true,"k":2,"useWarning":true,"want":3,"stamp":"SOLVED","eff":60,"ev":[2,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp02 패턴=none (597ms) {"pass":true,"k":3,"useWarning":false,"want":0,"stamp":"FAILED","eff":70,"ev":[3,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp02 패턴=first (750ms) {"pass":true,"k":4,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":40,"ev":[4,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp02 패턴=mid (765ms) {"pass":true,"k":5,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":50,"ev":[5,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp02 패턴=last (891ms) {"pass":true,"k":6,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":20,"ev":[6,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp02 패턴=two (883ms) {"pass":true,"k":7,"useWarning":false,"want":2,"stamp":"PARTIAL","eff":30,"ev":[7,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp03 패턴=all (743ms) {"pass":true,"k":5,"useWarning":false,"want":3,"stamp":"SOLVED","eff":50,"ev":[5,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp03 패턴=none (852ms) {"pass":true,"k":6,"useWarning":true,"want":0,"stamp":"FAILED","eff":20,"ev":[6,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp03 패턴=first (840ms) {"pass":true,"k":7,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":30,"ev":[7,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp03 패턴=mid (1006ms) {"pass":true,"k":8,"useWarning":true,"want":1,"stamp":"PARTIAL","eff":0,"ev":[8,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp03 패턴=last (1017ms) {"pass":true,"k":9,"useWarning":false,"want":1,"stamp":"PARTIAL","eff":10,"ev":[9,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS solo sp03 패턴=two (1156ms) {"pass":true,"k":10,"useWarning":true,"want":2,"stamp":"PARTIAL","eff":0,"ev":[10,10],"failedChecks":[],"imgFail":[],"fails":[]}
+PASS 이미지 전수: 10케이스 × 13장 — fetch 200·image/webp·크기>0 (385ms) {"pass":true,"checked":130,"bad":[]}
+PASS 목록 화면: 시즌 탭(7/0/3)·썸네일 로드·COMING SOON (547ms) {"pass":true,"thumbs1":[400,400,400,400,400,400,400],"thumbs3":[400,400,400],"f":[]}
+PASS 프로필 없을 때 모든 경로가 /profile로 (3883ms) {"pass":true,"out":{"/":"/profile","/lobby/ABC123":"/profile","/game/solo?caseId=s1e01":"/profile","/game/ABC123":"/profile","/result/solo":"/profile","/zzz":"/profile"}}
+PASS 프로필 있을 때 비정상 URL 처리 (없는 케이스·결과 데이터 없음·없는 방·알 수 없는 경로) (291ms) {"pass":true,"out":{"badCase":true,"noCase":true,"noResult":true,"noResultTeam":true,"noLobby":true,"noGame":true,"unknown":true},"f":[]}
+PASS 솔로 결과 화면 새로고침 → 점수 유지 / 게임 화면 새로고침 → 메모 유지·단서 초기화 (1905ms) {"pass":true,"note":"새로고침 메모","ev":[0,10],"hasScore":true}
+PASS 메모 디바운스 경계(관찰): 입력 직후 새로고침 시 유실 여부 vs 600ms 후 새로고침 (931ms) {"pass":true,"immediate":"","after600":"메모-600","immediateLost":true}
+PASS 뒤로가기·앞으로가기: 결과→게임→목록에서 빈 화면·오류 없음 (3299ms) {"pass":true,"seen":[{"step":"back","path":"game/solo","blank":false},{"step":"back","path":"/","blank":false},{"step":"forward","path":"game/solo","blank":false},{"step":"forward","path":"result/solo","blank":false}],"f":[]}
+PASS 입력 경계: 이름 공백·방 코드 비움·소문자+공백 코드 (274ms) {"pass":true,"lenLimit":20}
+PASS 프로필: 생성·중복·공백·20자 절단·XSS 이름·삭제(확인 2단계) (760ms) {"pass":true,"xss1":null,"shown":true,"dup":true,"stored":[18,20],"beforeDel":2,"afterDel":1,"errors":[]}
+PASS 전적: 100건 상한(최신순)·손상된 저장값 복구·저장소 비어도 동작 (618ms) {"pass":true,"len":100,"newest":"FAILED","oldest":"old98","okAfterCorrupt":true,"h2len":1,"backups":1,"f":[]}
+PASS 모바일 iPhone13 (390x844): 10케이스 게임·제출 모달·결과 가로 스크롤/화면 밖 컨트롤 0 (1425ms) {"pass":true,"probs":[],"f":[]}
+FAIL 모바일 SE (320x568): 10케이스 게임·제출 모달·결과 가로 스크롤/화면 밖 컨트롤 0 (1380ms) {"pass":false,"probs":["목록 가로 스크롤 331>320(iw 320)"],"f":[]}
+PASS 모바일 태블릿 (768x1024): 10케이스 게임·제출 모달·결과 가로 스크롤/화면 밖 컨트롤 0 (1377ms) {"pass":true,"probs":[],"f":[]}
+PASS 팀(1인) s1e01: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1243ms) {"pass":true,"ok":true,"pat":"all","want":3,"f":[]}
+PASS 팀(1인) s1e02: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1192ms) {"pass":true,"ok":true,"pat":"none","want":0,"f":[]}
+PASS 팀(1인) s1e03: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1229ms) {"pass":true,"ok":true,"pat":"first","want":1,"f":[]}
+PASS 팀(1인) s1e04: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1185ms) {"pass":true,"ok":true,"pat":"mid","want":1,"f":[]}
+PASS 팀(1인) s1e05: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1190ms) {"pass":true,"ok":true,"pat":"last","want":1,"f":[]}
+PASS 팀(1인) s1e06: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1208ms) {"pass":true,"ok":true,"pat":"two","want":2,"f":[]}
+PASS 팀(1인) s1e07: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1197ms) {"pass":true,"ok":true,"pat":"all","want":3,"f":[]}
+PASS 팀(1인) sp01: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1250ms) {"pass":true,"ok":true,"pat":"none","want":0,"f":[]}
+PASS 팀(1인) sp02: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1291ms) {"pass":true,"ok":true,"pat":"first","want":1,"f":[]}
+PASS 팀(1인) sp03: 카드 선택→방 생성→개시→게임 화면·제출→결과 (1212ms) {"pass":true,"ok":true,"pat":"mid","want":1,"f":[]}
+PASS 팀 8인 만석: 7명 참가·9번째 거부·개시·단서/메모 동기화·8명 각자 패턴 제출·팀 결과·전적 8건 (20364ms) {"pass":true,"synced":true,"evs":[1,1,1,1,1,1,1,1],"out":[{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true},{"score":true,"teamPanel":true,"hist1":true,"histOk":true,"xss":true}],"f":[]}
+PASS 방 코드 입력 변형(관찰): 소문자·뒤 공백은 참가 성공, 앞 공백은 6자 제한에 잘려 실패 (16383ms) {"pass":true,"lower":true,"trailingSpace":true,"leadingSpace":false,"leadingSpaceFails":true}
+PASS 팀 3인: 방장 수동 공개(일부 제출) → 미제출자도 결과 화면 이동, 점수 없음 / 진행·종료 후 참가 거부 (9475ms) {"pass":true,"lateMsg":true,"late2Msg":true,"guestHasRevealBtn":0,"hBlen":0,"tBhasScore":false,"f":[]}
+PASS 팀: 소문자 방 코드로 참가, 이름 XSS(방장·게스트)가 화면에서 실행되지 않음 (2949ms) {"pass":true,"lobbyHasXss":true,"teamPanel":true,"resultHasXss":true,"xss":[null,null],"bold":0,"lobbySnippet":"MINI CRIMES | BRIEFING ROOM STANDBY 📂 배정된 케이스 S1E05 [ 방 코드 — 팀원에게 공유 ] COPY QWKZHK 최대 8명 참가 가능 [ 수사 팀 — 2/8 ] <svg onload=__x=1> HOST <b>굵게</b> YOU 방장이 수사를 개시할","f":[]}
+PASS 팀 로비: 게스트 이탈 → 방장 인원 감소(유예 후), 재참가 가능 / 방장 이탈 → 게스트 홈 안내 (50745ms) {"pass":true,"dropMs":11,"takenDuringGrace":true,"notice":true}
+PASS 팀 진행 중: 게스트 새로고침 후 제출 → 결과 화면 새로고침해도 점수·팀 결과 유지 (11741ms) {"pass":true,"scoreAfterReload":true,"teamPanelAfterReload":true,"hist":1,"f":[]}
+
+88/89 PASS
+FAILED:
+ - 모바일 SE (320x568): 10케이스 게임·제출 모달·결과 가로 스크롤/화면 밖 컨트롤 0: {"pass":false,"probs":["목록 가로 스크롤 331>320(iw 320)"],"f":[]}

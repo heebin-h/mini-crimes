@@ -1,0 +1,38 @@
+case q 정답언급단서수 최다오답언급수 경고카드에정답 단서수
+s1e01 suspect  5  2 - 10
+s1e01 weapon   7  2 Y 10
+s1e01 motive   2  0 - 10
+s1e02 suspect  5  5 - 10
+s1e02 weapon   5  0 Y 10
+s1e02 motive   3  3 - 10
+s1e03 suspect  7  1 - 10
+s1e03 weapon   2  5 Y 10
+s1e03 motive   3  1 - 10
+s1e04 suspect  7  5 - 10
+s1e04 weapon   2  4 Y 10
+s1e04 motive   3  1 - 10
+s1e05 suspect  8  3 - 10
+s1e05 weapon   3  1 Y 10
+s1e05 motive   3  4 - 10
+s1e06 suspect  5  3 - 10
+s1e06 weapon   3  3 Y 10
+s1e06 motive   4  2 - 10
+s1e07 suspect  7  3 - 10
+s1e07 weapon   6  3 Y 10
+s1e07 motive   3  2 - 10
+sp01 suspect  5  3 - 10
+sp01 weapon   3  2 - 10
+sp01 motive   3  2 - 10
+sp02 suspect  5  3 - 10
+sp02 weapon   5  1 Y 10
+sp02 motive   3  1 - 10
+sp03 suspect  5  4 - 10
+sp03 weapon   8  2 Y 10
+sp03 motive   1  1 - 10
+
+정답 언급 0장: 0/30 문항, 오답 > 정답: 3/30 문항
+
+의심 목록:
+s1e03/weapon: 오답이 정답보다 단서에 더 자주 언급됨(오답 5장 > 정답 2장) — 혼동 가능, 의도된 미끼일 수 있음
+s1e04/weapon: 오답이 정답보다 단서에 더 자주 언급됨(오답 4장 > 정답 2장) — 혼동 가능, 의도된 미끼일 수 있음
+s1e05/motive: 오답이 정답보다 단서에 더 자주 언급됨(오답 4장 > 정답 3장) — 혼동 가능, 의도된 미끼일 수 있음
